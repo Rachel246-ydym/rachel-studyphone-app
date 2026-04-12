@@ -1,0 +1,157 @@
+.accounting-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.acc-stats {
+  padding: 16px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+}
+
+.acc-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.acc-month-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  min-width: 100px;
+  text-align: center;
+}
+
+.acc-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.acc-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.acc-stat-card.income {
+  background: #e6f9ee;
+  color: var(--primary-dark);
+}
+
+.acc-stat-card.expense {
+  background: #fff5f5;
+  color: #e03131;
+}
+
+.acc-stat-card.balance {
+  background: var(--primary-lightest);
+}
+
+.acc-stat-label {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.acc-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.acc-chart {
+  padding: 16px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chart-label {
+  font-size: 12px;
+  min-width: 70px;
+  color: var(--text);
+}
+
+.chart-bar-bg {
+  flex: 1;
+  height: 8px;
+  background: var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.chart-value {
+  font-size: 12px;
+  color: var(--text);
+  min-width: 50px;
+  text-align: right;
+}
+
+.acc-add-form {
+  padding: 16px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+}
+
+.acc-list {
+  flex: 1;
+  padding: 8px 16px;
+}
+
+.acc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.acc-item-icon {
+  font-size: 24px;
+  width: 36px;
+  text-align: center;
+}
+
+.acc-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.acc-item-desc {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.acc-item-cat {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.acc-item-amount {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.acc-item-amount.income { color: var(--primary-dark); }
+.acc-item-amount.expense { color: #e03131; }
