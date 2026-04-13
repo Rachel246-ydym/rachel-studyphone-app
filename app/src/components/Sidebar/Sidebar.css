@@ -1,14 +1,36 @@
 .sidebar {
-  height: 100vh;
+  height: var(--app-height);
   background: var(--bg-white);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: width var(--transition-speed) ease;
+  transition: width var(--transition-speed) ease, transform var(--transition-speed) ease;
   overflow: hidden;
   flex-shrink: 0;
   box-shadow: var(--shadow-sm);
   z-index: 10;
+}
+
+.sidebar-icon-with-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-red-dot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff4757;
+  box-shadow: 0 0 0 2px var(--bg-white);
+}
+
+.sidebar-item.active .sidebar-red-dot {
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 .sidebar.expanded {

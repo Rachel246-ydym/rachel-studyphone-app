@@ -25,6 +25,18 @@ export default function ChatRoom({ contactId, onBack }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Clear this contact's unread badge as soon as the user opens the chat,
+  // so the sidebar red dot reflects reality.
+  useEffect(() => {
+    if (contact && contact.unread && contact.unread > 0) {
+      dispatch({
+        type: 'UPDATE_CONTACT',
+        payload: { id: contactId, updates: { unread: 0 } },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactId]);
+
   if (!contact) return null;
 
   function addMessage(msg: Omit<ChatMessage, 'id' | 'timestamp'>) {

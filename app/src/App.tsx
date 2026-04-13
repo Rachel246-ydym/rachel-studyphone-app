@@ -1,5 +1,6 @@
 import { AppProvider, useApp } from './store/AppContext';
 import Sidebar from './components/Sidebar/Sidebar';
+import StatusBar from './components/StatusBar/StatusBar';
 import WeChat from './pages/WeChat/WeChat';
 import VirtualSpace from './pages/VirtualSpace/VirtualSpace';
 import Library from './pages/Library/Library';
@@ -8,10 +9,15 @@ import Shopping from './pages/Shopping/Shopping';
 import Accounting from './pages/Accounting/Accounting';
 import ExamSimulator from './pages/ExamSimulator/ExamSimulator';
 import Settings from './pages/Settings/Settings';
+import { useAutoMessages } from './hooks/useAutoMessages';
 import './App.css';
 
 function AppContent() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
+
+  // Run the Jiangxun auto-message scheduler at app level so it keeps firing
+  // regardless of which page is active.
+  useAutoMessages();
 
   const pageMap: Record<string, React.ReactNode> = {
     'wechat': <WeChat />,
@@ -27,9 +33,19 @@ function AppContent() {
   return (
     <div className="app-layout">
       <Sidebar />
-      <main className="app-main">
-        {pageMap[state.activePage] || <WeChat />}
-      </main>
+      {/* Mobile drawer backdrop — clicking closes the drawer */}
+      <div
+        className={`sidebar-backdrop ${state.sidebarExpanded ? 'visible' : ''}`}
+        onClick={() => {
+          if (state.sidebarExpanded) dispatch({ type: 'TOGGLE_SIDEBAR' });
+        }}
+      />
+      <div className="app-main-wrap">
+        <StatusBar />
+        <main className="app-main">
+          {pageMap[state.activePage] || <WeChat />}
+        </main>
+      </div>
     </div>
   );
 }

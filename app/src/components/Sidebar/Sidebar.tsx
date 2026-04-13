@@ -18,9 +18,13 @@ const iconMap: Record<string, React.ReactNode> = {
   Settings: <Settings size={22} />,
 };
 
+function isMobile() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+}
+
 export default function Sidebar() {
   const { state, dispatch } = useApp();
-  const { sidebarExpanded, sidebarItems, activePage } = state;
+  const { sidebarExpanded, sidebarItems, activePage, contacts } = state;
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const dragOverIndex = useRef<number | null>(null);
 
@@ -28,6 +32,9 @@ export default function Sidebar() {
   // Settings always last
   const mainItems = sorted.filter(i => i.id !== 'settings');
   const settingsItem = sorted.find(i => i.id === 'settings');
+
+  // Total unread across all chat contacts -> red dot on WeChat icon
+  const totalUnread = contacts.reduce((sum, c) => sum + (c.unread || 0), 0);
 
   function handleDragStart(index: number) {
     setDragIndex(index);
@@ -50,6 +57,27 @@ export default function Sidebar() {
     if (settingsItem) reordered.push({ ...settingsItem, order: reordered.length });
     dispatch({ type: 'REORDER_SIDEBAR', payload: reordered });
     setDragIndex(null);
+  }
+
+  function selectPage(id: string) {
+    dispatch({ type: 'SET_ACTIVE_PAGE', payload: id });
+    // On mobile, auto-close the drawer after picking an item
+    if (isMobile() && sidebarExpanded) {
+      dispatch({ type: 'TOGGLE_SIDEBAR' });
+    }
+  }
+
+  function renderIcon(item: { id: string; icon: string }) {
+    const base = iconMap[item.icon];
+    if (item.id === 'wechat' && totalUnread > 0) {
+      return (
+        <span className="sidebar-icon-with-dot">
+          {base}
+          <span className="sidebar-red-dot" title={`${totalUnread} 条未读`} />
+        </span>
+      );
+    }
+    return base;
   }
 
   return (
@@ -75,7 +103,7 @@ export default function Sidebar() {
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={handleDrop}
             onDragEnd={() => setDragIndex(null)}
-            onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', payload: item.id })}
+            onClick={() => selectPage(item.id)}
             title={item.label}
           >
             {sidebarExpanded && (
@@ -83,7 +111,7 @@ export default function Sidebar() {
                 <GripVertical size={14} />
               </span>
             )}
-            <span className="sidebar-icon">{iconMap[item.icon]}</span>
+            <span className="sidebar-icon">{renderIcon(item)}</span>
             {sidebarExpanded && <span className="sidebar-label">{item.label}</span>}
           </div>
         ))}
@@ -93,7 +121,7 @@ export default function Sidebar() {
         {settingsItem && (
           <div
             className={`sidebar-item ${activePage === 'settings' ? 'active' : ''}`}
-            onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', payload: 'settings' })}
+            onClick={() => selectPage('settings')}
             title="设置"
           >
             <span className="sidebar-icon">{iconMap[settingsItem.icon]}</span>

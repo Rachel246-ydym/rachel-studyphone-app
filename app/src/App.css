@@ -1,7 +1,17 @@
 .app-layout {
   display: flex;
   width: 100vw;
-  height: 100vh;
+  height: var(--app-height);
+  max-height: var(--app-height);
+  overflow: hidden;
+  position: relative;
+}
+
+.app-main-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -10,4 +20,79 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+/* Mobile drawer overlay backdrop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Floating "open drawer" button for mobile when sidebar is collapsed */
+.drawer-open-btn {
+  display: none;
+  position: fixed;
+  top: calc(var(--safe-top) + 44px);
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 0 16px 16px 0;
+  background: var(--primary-lightest);
+  color: var(--primary-dark);
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  border: 1px solid var(--border);
+  border-left: none;
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  /* On mobile the sidebar floats as a drawer above content */
+  .app-layout .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: var(--app-height);
+    z-index: 60;
+    padding-top: var(--safe-top);
+    padding-bottom: calc(var(--safe-bottom) + var(--mobile-bottom-pad));
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-layout .sidebar.expanded {
+    transform: translateX(0);
+  }
+
+  /* When collapsed on mobile, sidebar is hidden off-canvas entirely */
+  .app-layout .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: var(--sidebar-width-expanded);
+  }
+
+  .drawer-open-btn.show {
+    display: flex;
+  }
+
+  .app-main-wrap {
+    width: 100%;
+  }
 }
