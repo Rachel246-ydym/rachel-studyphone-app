@@ -1,77 +1,129 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../store/AppContext';
 import { callAI, buildMapEventPrompt } from '../../services/ai';
-import { MapPin, Clock, RefreshCw, ShoppingCart } from 'lucide-react';
+import { MapPin, Clock, RefreshCw, ShoppingCart, ZoomIn, ZoomOut } from 'lucide-react';
 import './Map.css';
+
+// Virtual campus landmarks laid out on a 5-column text grid.
+// Each landmark has a label + icon; (row, col) determines placement.
+interface Landmark {
+  id: string;
+  name: string;
+  icon: string;
+  row: number;
+  col: number;
+}
+
+const LANDMARKS: Landmark[] = [
+  { id: '食堂',      name: '食堂',      icon: '🍱', row: 0, col: 0 },
+  { id: '教学楼',    name: '教学楼',    icon: '🏛️', row: 0, col: 2 },
+  { id: '图书馆',    name: '图书馆',    icon: '📚', row: 0, col: 4 },
+  { id: '研究室',    name: '研究室',    icon: '🔬', row: 1, col: 1 },
+  { id: '广场',      name: '中心广场',  icon: '⛲', row: 1, col: 3 },
+  { id: '健身房',    name: '健身房',    icon: '🏋️', row: 2, col: 0 },
+  { id: '咖啡馆',    name: '咖啡馆',    icon: '☕', row: 2, col: 2 },
+  { id: '公寓',      name: '江浔的公寓', icon: '🏠', row: 2, col: 4 },
+];
+
+// Normalize a raw action string to a canonical landmark id.
+function matchLandmark(text: string): string | null {
+  for (const lm of LANDMARKS) {
+    if (text.includes(lm.id)) return lm.id;
+  }
+  // Fallbacks
+  if (text.includes('食堂') || text.includes('饭')) return '食堂';
+  if (text.includes('教室') || text.includes('上课')) return '教学楼';
+  if (text.includes('图书')) return '图书馆';
+  if (text.includes('咖啡')) return '咖啡馆';
+  if (text.includes('健身') || text.includes('跑步')) return '健身房';
+  if (text.includes('家') || text.includes('宿舍') || text.includes('回去')) return '公寓';
+  return null;
+}
 
 export default function Map() {
   const { state, dispatch } = useApp();
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [zoom, setZoom] = useState(1);
 
   const todayEvents = state.mapEvents.filter(e => {
     const eventDate = new Date(e.timestamp).toISOString().slice(0, 10);
     return eventDate === selectedDate;
   }).sort((a, b) => a.timestamp - b.timestamp);
 
-  const generateEvent = useCallback(async () => {
-    if (!state.apiKey || loading) return;
+  // Figure out Jiangxun's "current" landmark = latest event today.
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysOrdered = state.mapEvents
+    .filter(e => new Date(e.timestamp).toISOString().slice(0, 10) === today)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  const lastEvent = todaysOrdered[todaysOrdered.length - 1];
+  const currentLandmarkId = lastEvent && lastEvent.action.includes('到达')
+    ? matchLandmark(lastEvent.action)
+    : null;
+
+  // Generate a pair of map events: leave previous location + arrive at new one.
+  // Only records "到达" and "离开" (start/end) events per user spec.
+  const generateEvent = useCallback(async (targetName?: string) => {
+    if (loading) return;
     setLoading(true);
 
-    const currentHour = new Date().getHours();
-    const prompt = buildMapEventPrompt(currentHour);
+    let nextName = targetName || '';
+    if (!nextName && state.apiKey) {
+      const currentHour = new Date().getHours();
+      const prompt = buildMapEventPrompt(currentHour);
+      const action = await callAI(
+        state.apiKey,
+        state.aiModel,
+        [{ role: 'system', content: prompt }],
+      );
+      const match = matchLandmark(action);
+      nextName = match || LANDMARKS[Math.floor(Math.random() * LANDMARKS.length)].name;
+    }
+    if (!nextName) {
+      nextName = LANDMARKS[Math.floor(Math.random() * LANDMARKS.length)].name;
+    }
+    const target = LANDMARKS.find(l => nextName.includes(l.id)) || LANDMARKS[0];
 
-    const action = await callAI(
-      state.apiKey,
-      state.aiModel,
-      [{ role: 'system', content: prompt }],
-    );
-
-    // Determine location based on action
-    let location = '未知';
-    const locationMap: Record<string, string> = {
-      '图书馆': '校园图书馆',
-      '食堂': '第一食堂',
-      '宿舍': '男生宿舍楼',
-      '教室': '教学楼A',
-      '超市': '校园超市',
-      '操场': '运动场',
-      '实验室': '理工实验楼',
-      '咖啡': '校门口咖啡馆',
-    };
-    for (const [keyword, loc] of Object.entries(locationMap)) {
-      if (action.includes(keyword)) {
-        location = loc;
-        break;
+    // Leave previous location if any
+    const prev = todaysOrdered.slice().reverse().find(e => e.action.includes('到达'));
+    const now = Date.now();
+    if (prev) {
+      const prevLm = LANDMARKS.find(l => prev.action.includes(l.id));
+      if (prevLm && prevLm.id !== target.id) {
+        dispatch({
+          type: 'ADD_MAP_EVENT',
+          payload: {
+            id: `map-leave-${now}`,
+            timestamp: now,
+            location: prevLm.name,
+            action: `离开${prevLm.name}`,
+          },
+        });
       }
     }
-    if (location === '未知') location = '校园某处';
-
-    // Check if shopping-related
-    const isShopping = action.includes('超市') || action.includes('购物') || action.includes('买');
-
-    const event = {
-      id: `map-${Date.now()}`,
-      timestamp: Date.now(),
-      location,
-      action: action.trim(),
-      linkedShoppingId: isShopping ? 'pending' : undefined,
-    };
-    dispatch({ type: 'ADD_MAP_EVENT', payload: event });
+    dispatch({
+      type: 'ADD_MAP_EVENT',
+      payload: {
+        id: `map-arrive-${now + 1}`,
+        timestamp: now + 1,
+        location: target.name,
+        action: `到达${target.name}`,
+      },
+    });
     setLoading(false);
-  }, [state.apiKey, state.aiModel, loading, dispatch]);
+  }, [state.apiKey, state.aiModel, loading, dispatch, todaysOrdered]);
 
   // Auto-generate events periodically (every 30 min equivalent)
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
     const todayCount = state.mapEvents.filter(e =>
-      new Date(e.timestamp).toISOString().slice(0, 10) === today
+      new Date(e.timestamp).toISOString().slice(0, 10) === todayStr
     ).length;
 
     // Auto-generate if less than reasonable events for current hour
     const currentHour = new Date().getHours();
     const expectedMin = Math.max(0, Math.floor((currentHour - 6) / 2));
-    if (todayCount < expectedMin && state.apiKey) {
+    if (todayCount < expectedMin) {
       generateEvent();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -91,19 +143,65 @@ export default function Map() {
     new Date(e.timestamp).toISOString().slice(0, 10)
   ))].sort().reverse();
 
+  const rows = Math.max(...LANDMARKS.map(l => l.row)) + 1;
+  const cols = Math.max(...LANDMARKS.map(l => l.col)) + 1;
+
   return (
     <div className="map-page">
       <div className="page-header">
         <h3 style={{ flex: 1 }}>江浔的地图</h3>
         <button
+          className="header-btn"
+          title="缩小"
+          onClick={() => setZoom(z => Math.max(0.6, z - 0.15))}
+        >
+          <ZoomOut size={16} />
+        </button>
+        <button
+          className="header-btn"
+          title="放大"
+          onClick={() => setZoom(z => Math.min(1.6, z + 0.15))}
+        >
+          <ZoomIn size={16} />
+        </button>
+        <button
           className="btn-primary"
-          onClick={generateEvent}
-          disabled={loading || !state.apiKey}
-          style={{ padding: '6px 14px', fontSize: 13 }}
+          onClick={() => generateEvent()}
+          disabled={loading}
+          style={{ padding: '6px 14px', fontSize: 13, marginLeft: 6 }}
         >
           <RefreshCw size={14} className={loading ? 'spinning' : ''} />
           {loading ? '生成中...' : '刷新动态'}
         </button>
+      </div>
+
+      {/* Text-based zoomable campus grid */}
+      <div className="map-grid-wrap">
+        <div
+          className="map-grid"
+          style={{
+            transform: `scale(${zoom})`,
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridTemplateRows: `repeat(${rows}, 1fr)`,
+          }}
+        >
+          {LANDMARKS.map(lm => {
+            const isHere = currentLandmarkId === lm.id;
+            return (
+              <button
+                key={lm.id}
+                className={`map-landmark ${isHere ? 'active' : ''}`}
+                style={{ gridRow: lm.row + 1, gridColumn: lm.col + 1 }}
+                onClick={() => generateEvent(lm.name)}
+                title={`让江浔去${lm.name}`}
+              >
+                <div className="landmark-icon">{lm.icon}</div>
+                <div className="landmark-name">{lm.name}</div>
+                {isHere && <div className="landmark-me">江浔在这</div>}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="map-content">
