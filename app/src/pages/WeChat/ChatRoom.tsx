@@ -203,6 +203,16 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
       content: userMsg,
       type: 'text',
     });
+    // Keyword: mentioning 购物 surfaces a quick shortcut into the shopping page.
+    if (/购物|买东西|购物车/.test(userMsg)) {
+      addMessage({
+        contactId,
+        senderId: 'system',
+        senderName: '系统',
+        content: '🛍️ 检测到购物意向，点击侧边栏"购物"模块直接进入商店。',
+        type: 'system',
+      });
+    }
     setLoading(true);
     try {
       const history = [...messages, { role: 'user' as const, content: userMsg }].map(m => ({

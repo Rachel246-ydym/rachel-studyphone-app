@@ -43,6 +43,11 @@ export const DEFAULT_PRODUCTS: Product[] = [
   { id: 'p30', name: '相册', category: 'gifts', price: 30, description: '纪念相册', emoji: '📸' },
   { id: 'p31', name: '手链', category: 'gifts', price: 35, description: '银色手链', emoji: '📿' },
   { id: 'p32', name: '围巾', category: 'gifts', price: 28, description: '柔软羊绒围巾', emoji: '🧣' },
+  { id: 'p32a', name: '鲜花束', category: 'gifts', price: 22, description: '手扎小花束', emoji: '🌷' },
+  { id: 'p32b', name: '拼装积木', category: 'gifts', price: 40, description: '解压的小积木套装', emoji: '🧱' },
+  { id: 'p32c', name: '定制贴纸', category: 'gifts', price: 6, description: '你们俩的名字贴纸', emoji: '🏷️' },
+  { id: 'p32d', name: '星空灯', category: 'gifts', price: 32, description: '投影星空小夜灯', emoji: '✨' },
+  { id: 'p32e', name: '小钱包', category: 'gifts', price: 26, description: '可以装小纸条的', emoji: '👛' },
 
   // Adult (only visible when relationship = lover)
   { id: 'p33', name: '安全套', category: 'adult', price: 10, description: '安全措施', emoji: '🛡️', adultOnly: true },

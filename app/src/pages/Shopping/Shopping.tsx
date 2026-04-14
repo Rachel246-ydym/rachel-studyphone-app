@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ShoppingCart, Coins, Receipt, Tag } from 'lucide-react';
-import type { Product, ShoppingReceipt } from '../../types';
+import { ShoppingCart, Coins, Receipt, Tag, Gift } from 'lucide-react';
+import type { Product, ShoppingReceipt, ChatMessage } from '../../types';
 import './Shopping.css';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -51,7 +51,43 @@ export default function Shopping() {
 
   function checkout() {
     const total = getTotalPrice();
-    if (total > state.userHaibi) return;
+    if (total <= 0) return;
+
+    // Insufficient funds path: Jiangxun sends a surprise red packet so the
+    // user can afford it. Receipt is recorded once balance is topped up.
+    if (total > state.userHaibi) {
+      const gap = total - state.userHaibi;
+      const bonus = Math.max(gap + 2, Math.ceil(gap * 1.2));
+      dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: bonus } });
+      const note = '看你购物车空不了手，先拿着用';
+      const msg: ChatMessage = {
+        id: `rp-pay-${Date.now()}`,
+        contactId: 'jiangxun',
+        senderId: 'jiangxun',
+        senderName: '江浔',
+        content: note,
+        type: 'red-packet',
+        timestamp: Date.now(),
+        redPacketAmount: bonus,
+        redPacketClaimed: true,
+        redPacketNote: note,
+        redPacketKind: 'small',
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: msg });
+      const jx = state.contacts.find(c => c.id === 'jiangxun');
+      dispatch({
+        type: 'UPDATE_CONTACT',
+        payload: {
+          id: 'jiangxun',
+          updates: {
+            lastMessage: `[红包] ${note}`,
+            lastMessageTime: Date.now(),
+            unread: (jx?.unread || 0) + 1,
+          },
+        },
+      });
+      // Now proceed with normal checkout
+    }
 
     dispatch({ type: 'SPEND_HAIBI', payload: { target: 'user', amount: total } });
 
@@ -62,6 +98,25 @@ export default function Shopping() {
       sharedWith: buyAs === 'together' ? 'jiangxun' : undefined,
       totalPrice: total,
       timestamp: Date.now(),
+    };
+    dispatch({ type: 'ADD_RECEIPT', payload: receipt });
+    setCart([]);
+    setShowCart(false);
+  }
+
+  // Jiangxun pays out of his unlimited account instead of the user's.
+  function checkoutByJiangxun() {
+    const total = getTotalPrice();
+    if (total <= 0) return;
+    dispatch({ type: 'SPEND_HAIBI', payload: { target: 'jiangxun', amount: total } });
+    const receipt: ShoppingReceipt = {
+      id: `receipt-${Date.now()}`,
+      items: cart,
+      buyerId: 'jiangxun',
+      sharedWith: 'user',
+      totalPrice: total,
+      timestamp: Date.now(),
+      jiangxunComment: '这点东西还用你付',
     };
     dispatch({ type: 'ADD_RECEIPT', payload: receipt });
     setCart([]);
@@ -203,13 +258,18 @@ export default function Shopping() {
               ))}
               <div className="cart-footer">
                 <div className="cart-total">合计：{getTotalPrice()} 海币</div>
-                <button
-                  className="btn-primary"
-                  onClick={checkout}
-                  disabled={getTotalPrice() > state.userHaibi}
-                >
-                  {getTotalPrice() > state.userHaibi ? '余额不足' : '结算'}
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn-primary" onClick={checkout}>
+                    {getTotalPrice() > state.userHaibi ? '余额不足·江浔发红包' : '结算'}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={checkoutByJiangxun}
+                    title="江浔付款（走他的账户）"
+                  >
+                    <Gift size={13} /> 让江浔付
+                  </button>
+                </div>
               </div>
             </>
           )}
