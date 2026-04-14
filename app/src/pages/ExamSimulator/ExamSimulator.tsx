@@ -1,81 +1,112 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../store/AppContext';
 import { CheckCircle, Circle, Trophy, Calendar, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
-import { SUBJECT_LABELS } from '../../utils/prompts';
+import { SUBJECT_LABELS, MATH_LECTURES } from '../../utils/prompts';
+import type { ChatMessage, StudyTask } from '../../types';
 import './ExamSimulator.css';
+
+// April 1, 2026 marks day 0 of the plan.
+const PLAN_START = new Date(2026, 3, 1); // month is 0-indexed
+
+function dayOffset(dateStr: string): number {
+  const d = new Date(dateStr);
+  return Math.floor((d.getTime() - PLAN_START.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function mathLectureForDay(offset: number): string {
+  if (offset < 0) return MATH_LECTURES[0];
+  // 1 lecture every ~4 days, clamped to the end
+  const idx = Math.min(MATH_LECTURES.length - 1, Math.floor(offset / 4));
+  return MATH_LECTURES[idx];
+}
 
 export default function ExamSimulator() {
   const { state, dispatch } = useApp();
   const [tab, setTab] = useState<'tasks' | 'calendar' | 'achievements'>('tasks');
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [viewDate, setViewDate] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Generate today's tasks if not exist
+  // Generate today's tasks + fill in the past 13 days as "未打卡可补" if
+  // they don't exist yet. New users starting on April 14 will see April 1-13
+  // as makeup-available days.
   useEffect(() => {
+    // Today
     const todayTasks = state.studyTasks.filter(t => t.date === today);
     if (todayTasks.length === 0) {
-      generateDailyTasks();
+      generateDailyTasksFor(today);
+    }
+    // Backfill last 13 days for makeup (only if plan has started)
+    for (let i = 1; i <= 13; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      if (d < PLAN_START) continue;
+      const existing = state.studyTasks.filter(t => t.date === ds);
+      if (existing.length === 0) {
+        generateDailyTasksFor(ds);
+      }
     }
     // Check for review tasks
     generateReviewTasks();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function generateDailyTasks() {
-    const now = new Date();
-    const month = now.getMonth() + 1;
+  function generateDailyTasksFor(dateStr: string) {
+    const d = new Date(dateStr);
+    const month = d.getMonth() + 1;
+    const offset = dayOffset(dateStr);
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const tasks = [];
-    // Math task - always present
-    const mathLecture = Math.min(18, Math.max(1, state.studyStats.totalDaysCheckedIn + 1));
+    const tasks: StudyTask[] = [];
     tasks.push({
-      id: `task-${Date.now()}-math`,
-      date: today,
+      id: `task-${stamp}-math`,
+      date: dateStr,
       subject: 'math' as const,
-      title: `张宇高数第${mathLecture}讲`,
-      description: `完成张宇基础30讲高数分册第${mathLecture}讲的学习`,
+      title: `张宇高数：${mathLectureForDay(offset)}`,
+      description: '完成对应讲次视频 + 配套练习（1000题相关题目）',
       isCompleted: false,
       isReview: false,
-      haibiReward: 5 + Math.floor(Math.random() * 5),
+      haibiReward: 8,
     });
 
     // English - always present
     tasks.push({
-      id: `task-${Date.now()}-eng`,
-      date: today,
+      id: `task-${stamp}-eng`,
+      date: dateStr,
       subject: 'english' as const,
       title: '英语每日任务',
-      description: '单词背诵 + 听力精听 + 阅读练习',
+      description: '单词背诵（真题词） + 听力精听 + 阅读练习',
       isCompleted: false,
       isReview: false,
-      haibiReward: 5 + Math.floor(Math.random() * 3),
+      haibiReward: 6,
     });
 
-    // Professional course - from April
-    if (month >= 4) {
+    // Professional course - from late April
+    if (month > 4 || (month === 4 && d.getDate() >= 20)) {
       tasks.push({
-        id: `task-${Date.now()}-pro`,
-        date: today,
+        id: `task-${stamp}-pro`,
+        date: dateStr,
         subject: 'professional' as const,
-        title: '专业课学习',
-        description: '摄影测量与遥感基础知识',
+        title: '专业课891：摄影测量与遥感',
+        description: '以RS遥感为核心，每天1小时起步',
         isCompleted: false,
         isReview: false,
-        haibiReward: 5 + Math.floor(Math.random() * 3),
+        haibiReward: 6,
       });
     }
 
     // Politics - from July
     if (month >= 7) {
       tasks.push({
-        id: `task-${Date.now()}-pol`,
-        date: today,
+        id: `task-${stamp}-pol`,
+        date: dateStr,
         subject: 'politics' as const,
-        title: '政治学习',
-        description: '考研政治基础内容',
+        title: '政治基础',
+        description: '肖秀荣/徐涛核心考点',
         isCompleted: false,
         isReview: false,
-        haibiReward: 3 + Math.floor(Math.random() * 3),
+        haibiReward: 4,
       });
     }
 
@@ -148,21 +179,99 @@ export default function ExamSimulator() {
     }
   }
 
+  function notifyUnlock(title: string) {
+    // Push a Jiangxun congrats message into the chat; mirrors into 朋友圈
+    const now = Date.now();
+    const msg: ChatMessage = {
+      id: `ach-${now}`,
+      contactId: 'jiangxun',
+      senderId: 'jiangxun',
+      senderName: '江浔',
+      content: `🏆 解锁成就「${title}」了 —— 我就知道你可以`,
+      type: 'text',
+      timestamp: now,
+    };
+    dispatch({ type: 'ADD_MESSAGE', payload: msg });
+    const jx = state.contacts.find(c => c.id === 'jiangxun');
+    dispatch({
+      type: 'UPDATE_CONTACT',
+      payload: {
+        id: 'jiangxun',
+        updates: {
+          lastMessage: msg.content.slice(0, 30),
+          lastMessageTime: now,
+          unread: (jx?.unread || 0) + 1,
+        },
+      },
+    });
+    dispatch({
+      type: 'ADD_MOMENT',
+      payload: {
+        id: `moment-ach-${now}`,
+        authorId: 'jiangxun',
+        authorName: state.jiangxunProfile.name || '江浔',
+        authorAvatar: state.jiangxunProfile.avatar || '',
+        content: `她又拿到一个成就：${title}。偷偷骄傲一下。`,
+        timestamp: now,
+        likes: ['jiangxun'],
+        comments: [],
+      },
+    });
+  }
+
   function checkAchievements(streak: number) {
+    const mathTasksDone = state.studyTasks.filter(t => t.subject === 'math' && t.isCompleted).length;
+    const engTasksDone = state.studyTasks.filter(t => t.subject === 'english' && t.isCompleted).length;
+    const proTasksDone = state.studyTasks.filter(t => t.subject === 'professional' && t.isCompleted).length;
+    const polTasksDone = state.studyTasks.filter(t => t.subject === 'politics' && t.isCompleted).length;
+    const reviewsDone = state.studyTasks.filter(t => t.isReview && t.isCompleted).length;
+    const totalIn = state.studyStats.totalDaysCheckedIn + 1;
     const checks: Record<string, boolean> = {
       first_checkin: state.studyStats.totalDaysCheckedIn === 0,
       streak_3: streak >= 3,
       streak_7: streak >= 7,
       streak_15: streak >= 15,
       streak_30: streak >= 30,
+      math_1: mathTasksDone >= 1,
+      math_9: mathTasksDone >= 9,
+      math_18: mathTasksDone >= 18,
+      first_book: state.books.length > 0,
+      review_10: reviewsDone >= 10,
+      total_100: totalIn >= 100,
+      focus_max: state.studyStats.focus >= 100,
+      perseverance_max: state.studyStats.perseverance >= 100,
+      first_moment: state.moments.some(m => m.authorId === 'user'),
+      eng_30: engTasksDone >= 30,
+      pro_1: proTasksDone >= 1,
+      pol_1: polTasksDone >= 1,
+      streak_perfect_30: streak >= 30,
+      haibi_1000: state.userHaibi >= 1000,
     };
 
     state.achievements.forEach(a => {
       if (!a.isUnlocked && checks[a.condition]) {
         dispatch({ type: 'UNLOCK_ACHIEVEMENT', payload: a.id });
         dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: a.haibiReward } });
+        notifyUnlock(a.title);
       }
     });
+  }
+
+  // Makeup check-in for a past date. Records the unlock + unlocks the
+  // 补卡行动派 achievement on first use.
+  function makeupCheckin(dateStr: string) {
+    const pastTasks = state.studyTasks.filter(t => t.date === dateStr && !t.isCompleted);
+    pastTasks.forEach(t => {
+      dispatch({ type: 'COMPLETE_TASK', payload: t.id });
+      dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: Math.floor(t.haibiReward / 2) } });
+    });
+    // Unlock first_makeup
+    const ach = state.achievements.find(a => a.condition === 'first_makeup' && !a.isUnlocked);
+    if (ach) {
+      dispatch({ type: 'UNLOCK_ACHIEVEMENT', payload: ach.id });
+      dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: ach.haibiReward } });
+      notifyUnlock(ach.title);
+    }
   }
 
   const todayTasks = state.studyTasks.filter(t => t.date === today);
@@ -279,11 +388,19 @@ export default function ExamSimulator() {
               {Array.from({ length: daysInMonth }, (_, i) => {
                 const day = i + 1;
                 const status = getDayStatus(day);
-                const isToday = getDateStr(day) === today;
+                const dateStr = getDateStr(day);
+                const isToday = dateStr === today;
+                const isFuture = dateStr > today;
+                const isPast = dateStr < today;
                 return (
-                  <div key={day} className={`calendar-day ${status} ${isToday ? 'today' : ''}`}>
+                  <div
+                    key={day}
+                    className={`calendar-day ${status} ${isToday ? 'today' : ''} ${isFuture ? 'future' : ''}`}
+                    onClick={() => setViewDate(dateStr)}
+                  >
                     {day}
                     {status === 'complete' && <div className="day-check">✓</div>}
+                    {isPast && status === 'pending' && <div className="day-dot" style={{ background: '#fa5252' }} />}
                   </div>
                 );
               })}
@@ -293,6 +410,41 @@ export default function ExamSimulator() {
               <span><span className="legend-dot partial" /> 部分完成</span>
               <span><span className="legend-dot pending" /> 未完成</span>
             </div>
+
+            {viewDate && (() => {
+              const dayTasks = state.studyTasks.filter(t => t.date === viewDate);
+              const isFuture = viewDate > today;
+              const isPast = viewDate < today;
+              return (
+                <div className="calendar-day-detail">
+                  <div className="detail-header">
+                    <strong>{viewDate}</strong>
+                    {isFuture && <span className="detail-badge">预览未来</span>}
+                    {isPast && dayTasks.some(t => !t.isCompleted) && (
+                      <button className="btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => makeupCheckin(viewDate)}>
+                        补卡打卡
+                      </button>
+                    )}
+                    <button className="back-btn" onClick={() => setViewDate(null)} style={{ marginLeft: 'auto' }}>
+                      ×
+                    </button>
+                  </div>
+                  {dayTasks.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-light)', padding: 8 }}>
+                      这天没有任务记录
+                    </div>
+                  ) : (
+                    dayTasks.map(t => (
+                      <div key={t.id} className="detail-task">
+                        <span>{t.isCompleted ? '✓' : '·'} {SUBJECT_LABELS[t.subject]}</span>
+                        <span style={{ flex: 1, margin: '0 8px' }}>{t.title}</span>
+                        <span style={{ color: 'var(--text-light)', fontSize: 11 }}>+{t.haibiReward}🪙</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

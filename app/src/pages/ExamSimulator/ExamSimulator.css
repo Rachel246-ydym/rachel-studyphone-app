@@ -265,3 +265,41 @@
   color: #e65100;
   white-space: nowrap;
 }
+
+/* Day detail panel in calendar tab */
+.calendar-day-detail {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.detail-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--primary-lightest);
+  color: var(--primary);
+  border-radius: 10px;
+}
+
+.detail-task {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-light);
+}
+.detail-task:last-child { border-bottom: none; }
+
+.calendar-day.future {
+  opacity: 0.5;
+}
