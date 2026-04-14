@@ -1,4 +1,4 @@
-import type { AIModel, CharacterCard } from '../types';
+import type { AIModel, CharacterCard, MemoryEntry } from '../types';
 
 interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant';
@@ -81,10 +81,34 @@ export async function callAI(
   }
 }
 
+// Render a memory list into a prompt block. Starred memories are pinned
+// above the short-term ones and labelled "重要".
+function renderMemories(memories: MemoryEntry[] | undefined, charId = 'jiangxun'): string {
+  if (!memories || memories.length === 0) return '';
+  const scoped = memories.filter(m => (m.charId || 'jiangxun') === charId);
+  if (scoped.length === 0) return '';
+  const starred = scoped.filter(m => m.starred);
+  const recent = scoped.filter(m => !m.starred).slice(0, 10);
+  const labels: Record<string, string> = {
+    event: '重要时刻',
+    hobby: '爱好/偏好',
+    detail: '聊天细节',
+    achievement: '任务成就',
+  };
+  const fmt = (arr: MemoryEntry[]) =>
+    arr.map(m => `  - [${labels[m.category] || m.category}] ${m.content}`).join('\n');
+  let block = '\n\n[你记得的关于京京的事（保持连贯性，自然地引用，但不要刻意罗列）：';
+  if (starred.length) block += `\n重要：\n${fmt(starred)}`;
+  if (recent.length) block += `\n最近：\n${fmt(recent)}`;
+  block += '\n]';
+  return block;
+}
+
 export function buildJiangxunMessages(
   chatHistory: { role: 'user' | 'assistant'; content: string }[],
   relationshipStatus: string,
   extraContext?: string,
+  memories?: MemoryEntry[],
 ): ChatCompletionMessage[] {
   let systemPrompt = JIANGXUN_SYSTEM_PROMPT;
   if (relationshipStatus === 'lover') {
@@ -92,6 +116,7 @@ export function buildJiangxunMessages(
   } else {
     systemPrompt += '\n\n[当前关系状态：最好的朋友。你可以通过日常互动表达好感，但不要太直接。]';
   }
+  systemPrompt += renderMemories(memories, 'jiangxun');
   if (extraContext) {
     systemPrompt += `\n\n${extraContext}`;
   }
@@ -106,8 +131,10 @@ export function buildCharacterMessages(
   card: CharacterCard,
   chatHistory: { role: 'user' | 'assistant'; content: string }[],
   crossAccountInfo?: { realSpeaker: string; pretendingAs: string },
+  memories?: MemoryEntry[],
 ): ChatCompletionMessage[] {
   let systemPrompt = getCharacterPrompt(card);
+  systemPrompt += renderMemories(memories, card.id);
   if (crossAccountInfo) {
     systemPrompt += getCrossAccountDetectionPrompt(
       crossAccountInfo.realSpeaker,

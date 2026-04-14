@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
-import type { AppState, ChatMessage, ChatContact, CharacterCard, MomentsPost, HomeworkItem, VirtualSpaceEntry, Footprint, PeriodRecord, Book, BookMark, MapEvent, ShoppingReceipt, Transaction, StudyTask, SidebarItem } from '../types';
+import type { AppState, ChatMessage, ChatContact, CharacterCard, MomentsPost, HomeworkItem, VirtualSpaceEntry, Footprint, PeriodRecord, Book, BookMark, MapEvent, ShoppingReceipt, Transaction, StudyTask, SidebarItem, MemoryEntry, StoryReplay } from '../types';
 import { saveData, loadData } from '../services/storage';
 import { DEFAULT_PRODUCTS, DEFAULT_ACHIEVEMENTS, DEFAULT_SIDEBAR_ITEMS } from '../utils/prompts';
 
@@ -30,6 +30,9 @@ const initialState: AppState = {
   messages: {},
   moments: [],
   homework: [],
+  memories: [],
+  momentsBackgroundImage: undefined,
+  storyReplays: [],
   virtualSpaceEntries: [],
   footprints: [],
   periodRecords: [],
@@ -63,6 +66,15 @@ type Action =
   | { type: 'ADD_CONTACT'; payload: ChatContact }
   | { type: 'UPDATE_CONTACT'; payload: { id: string; updates: Partial<ChatContact> } }
   | { type: 'ADD_MESSAGE'; payload: ChatMessage }
+  | { type: 'UPDATE_MESSAGE'; payload: { contactId: string; id: string; updates: Partial<ChatMessage> } }
+  | { type: 'DELETE_MESSAGE'; payload: { contactId: string; id: string } }
+  | { type: 'REPLACE_MESSAGES'; payload: { contactId: string; messages: ChatMessage[] } }
+  | { type: 'ADD_MEMORY'; payload: MemoryEntry }
+  | { type: 'UPDATE_MEMORY'; payload: { id: string; updates: Partial<MemoryEntry> } }
+  | { type: 'DELETE_MEMORY'; payload: string }
+  | { type: 'SET_MOMENTS_BG'; payload: string | undefined }
+  | { type: 'ADD_STORY_REPLAY'; payload: StoryReplay }
+  | { type: 'DELETE_STORY_REPLAY'; payload: string }
   | { type: 'ADD_MOMENT'; payload: MomentsPost }
   | { type: 'UPDATE_MOMENT'; payload: { id: string; updates: Partial<MomentsPost> } }
   | { type: 'ADD_HOMEWORK'; payload: HomeworkItem }
@@ -142,6 +154,52 @@ function reducer(state: AppState, action: Action): AppState {
         messages: { ...state.messages, [contactId]: [...existing, action.payload] },
       };
     }
+    case 'UPDATE_MESSAGE': {
+      const { contactId, id, updates } = action.payload;
+      const list = state.messages[contactId] || [];
+      return {
+        ...state,
+        messages: {
+          ...state.messages,
+          [contactId]: list.map(m => (m.id === id ? { ...m, ...updates } : m)),
+        },
+      };
+    }
+    case 'DELETE_MESSAGE': {
+      const { contactId, id } = action.payload;
+      const list = state.messages[contactId] || [];
+      return {
+        ...state,
+        messages: { ...state.messages, [contactId]: list.filter(m => m.id !== id) },
+      };
+    }
+    case 'REPLACE_MESSAGES': {
+      const { contactId, messages } = action.payload;
+      return {
+        ...state,
+        messages: { ...state.messages, [contactId]: messages },
+      };
+    }
+    case 'ADD_MEMORY':
+      return { ...state, memories: [action.payload, ...state.memories] };
+    case 'UPDATE_MEMORY':
+      return {
+        ...state,
+        memories: state.memories.map(m =>
+          m.id === action.payload.id ? { ...m, ...action.payload.updates } : m
+        ),
+      };
+    case 'DELETE_MEMORY':
+      return { ...state, memories: state.memories.filter(m => m.id !== action.payload) };
+    case 'SET_MOMENTS_BG':
+      return { ...state, momentsBackgroundImage: action.payload };
+    case 'ADD_STORY_REPLAY':
+      return { ...state, storyReplays: [action.payload, ...(state.storyReplays || [])] };
+    case 'DELETE_STORY_REPLAY':
+      return {
+        ...state,
+        storyReplays: (state.storyReplays || []).filter(s => s.id !== action.payload),
+      };
     case 'ADD_MOMENT':
       return { ...state, moments: [action.payload, ...state.moments] };
     case 'UPDATE_MOMENT':
@@ -258,6 +316,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sidebarItems: saved.sidebarItems || init.sidebarItems,
         products: saved.products?.length ? saved.products : init.products,
         achievements: saved.achievements?.length ? saved.achievements : init.achievements,
+        memories: saved.memories || [],
+        storyReplays: saved.storyReplays || [],
       };
     }
     return init;

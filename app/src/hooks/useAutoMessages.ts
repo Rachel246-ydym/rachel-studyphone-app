@@ -23,6 +23,23 @@ const MIN_COOLDOWN_MS = 45 * 60 * 1000; // 45 minutes
 const TRIGGER_PROBABILITY = 0.25;
 const LAST_AUTO_KEY = 'jiangxun-last-auto-msg';
 
+// 8% of auto messages will include a random small red packet, 3% will be a
+// location card (a light "here's where I am" gesture).
+const RED_PACKET_PROB = 0.08;
+const LOCATION_PROB = 0.03;
+
+// Landmarks Jiangxun might spontaneously be at when sending a location card.
+// Kept intentionally short and reused by Map.tsx in batch 5 — strings match.
+const CASUAL_LOCATIONS = [
+  '图书馆 · 四楼靠窗',
+  '食堂 · 二楼',
+  '研究室',
+  '健身房',
+  '咖啡馆',
+  '江浔的公寓',
+  '玄武湖边',
+];
+
 function currentHour() {
   return new Date().getHours();
 }
@@ -122,6 +139,81 @@ export function useAutoMessages() {
       const weather = await fetchWeather();
       const mood = weatherMood(weather);
 
+      // -------- Red packet branch --------
+      if (Math.random() < RED_PACKET_PROB) {
+        const amount = 2 + Math.floor(Math.random() * 10); // 2-11
+        const notePool = [
+          '想你了，拿去买点好吃的',
+          '今天突然想给你发个红包',
+          '别省着花',
+          '奖励你认真学习',
+          '想到你就想发给你',
+        ];
+        const note = notePool[Math.floor(Math.random() * notePool.length)];
+        dispatch({
+          type: 'ADD_MESSAGE',
+          payload: {
+            id: `auto-rp-${Date.now()}`,
+            contactId: 'jiangxun',
+            senderId: 'jiangxun',
+            senderName: '江浔',
+            content: note,
+            type: 'red-packet',
+            timestamp: Date.now(),
+            redPacketAmount: amount,
+            redPacketClaimed: false,
+            redPacketNote: note,
+            redPacketKind: 'small',
+          },
+        });
+        const c = s.contacts.find(c => c.id === 'jiangxun');
+        dispatch({
+          type: 'UPDATE_CONTACT',
+          payload: {
+            id: 'jiangxun',
+            updates: {
+              lastMessage: '[红包] ' + note,
+              lastMessageTime: Date.now(),
+              unread: (c?.unread || 0) + 1,
+            },
+          },
+        });
+        setLastAuto(Date.now());
+        return;
+      }
+
+      // -------- Location branch --------
+      if (Math.random() < LOCATION_PROB) {
+        const loc = CASUAL_LOCATIONS[Math.floor(Math.random() * CASUAL_LOCATIONS.length)];
+        dispatch({
+          type: 'ADD_MESSAGE',
+          payload: {
+            id: `auto-loc-${Date.now()}`,
+            contactId: 'jiangxun',
+            senderId: 'jiangxun',
+            senderName: '江浔',
+            content: loc,
+            type: 'location',
+            location: loc,
+            timestamp: Date.now(),
+          },
+        });
+        const c = s.contacts.find(c => c.id === 'jiangxun');
+        dispatch({
+          type: 'UPDATE_CONTACT',
+          payload: {
+            id: 'jiangxun',
+            updates: {
+              lastMessage: '[位置] ' + loc,
+              lastMessageTime: Date.now(),
+              unread: (c?.unread || 0) + 1,
+            },
+          },
+        });
+        setLastAuto(Date.now());
+        return;
+      }
+
       let content: string | null = null;
 
       // If API key present, try the model first, else fall back.
@@ -139,7 +231,7 @@ export function useAutoMessages() {
           const reply = await callAI(
             s.apiKey,
             s.aiModel,
-            buildJiangxunMessages(history, s.relationshipStatus, extra),
+            buildJiangxunMessages(history, s.relationshipStatus, extra, s.memories),
           );
           if (reply && !reply.startsWith('[')) {
             // Take only the first 120 chars to keep auto-messages short

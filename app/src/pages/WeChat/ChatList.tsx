@@ -1,5 +1,5 @@
 import type { ChatContact } from '../../types';
-import { UserPlus, Users, Camera, MoreHorizontal } from 'lucide-react';
+import { UserPlus, Users, Camera, MoreHorizontal, Brain } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../../store/AppContext';
 
@@ -9,9 +9,10 @@ interface Props {
   onOpenMoments: () => void;
   onOpenHomework: () => void;
   onOpenCharacters: () => void;
+  onOpenMemories: () => void;
 }
 
-export default function ChatList({ contacts, onOpenChat, onOpenMoments, onOpenHomework, onOpenCharacters }: Props) {
+export default function ChatList({ contacts, onOpenChat, onOpenMoments, onOpenHomework, onOpenCharacters, onOpenMemories }: Props) {
   const { state } = useApp();
   const [showMenu, setShowMenu] = useState(false);
 
@@ -57,6 +58,10 @@ export default function ChatList({ contacts, onOpenChat, onOpenMoments, onOpenHo
                 </button>
                 <button className="menu-item" onClick={() => { onOpenHomework(); setShowMenu(false); }}>
                   📋 作业板
+                </button>
+                <button className="menu-item" onClick={() => { onOpenMemories(); setShowMenu(false); }}>
+                  <Brain size={14} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                  记忆库
                 </button>
               </div>
             )}

@@ -49,7 +49,23 @@ export interface ChatMessage {
   timestamp: number;
   redPacketAmount?: number;
   redPacketClaimed?: boolean;
+  redPacketNote?: string; // WeChat-style 留言
+  redPacketKind?: 'small' | 'big'; // drives UI and amount range
   location?: string; // from map module
+  edited?: boolean; // user manually edited or regenerated
+}
+
+// ============ Long-term Memory (batch 2) ============
+export type MemoryCategory = 'event' | 'hobby' | 'detail' | 'achievement';
+
+export interface MemoryEntry {
+  id: string;
+  category: MemoryCategory;
+  content: string;
+  starred: boolean; // always pinned into prompt
+  createdAt: number;
+  // Which AI character this memory belongs to. Defaults to 'jiangxun'.
+  charId?: string;
 }
 
 export interface MomentsPost {
@@ -107,6 +123,16 @@ export interface PeriodRecord {
   startDate: string; // YYYY-MM-DD
   endDate?: string;
   cycleLength?: number;
+}
+
+// ============ Story Replay (batch 4) ============
+export interface StoryReplay {
+  id: string;
+  title: string;
+  contactId: string;
+  messageIds: string[];
+  createdAt: number;
+  format: 'text' | 'image';
 }
 
 // ============ Library ============
@@ -268,6 +294,9 @@ export interface AppState {
   messages: Record<string, ChatMessage[]>; // contactId -> messages
   moments: MomentsPost[];
   homework: HomeworkItem[];
+  memories: MemoryEntry[];
+  momentsBackgroundImage?: string; // base64 or URL, used on the Moments page
+  storyReplays?: StoryReplay[];
 
   // Virtual Space
   virtualSpaceEntries: VirtualSpaceEntry[];
