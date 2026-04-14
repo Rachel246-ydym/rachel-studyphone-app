@@ -11,13 +11,21 @@
 
 import { useEffect, useRef } from 'react';
 import { useApp } from '../store/AppContext';
-import type { AppState, MomentsPost, ChatMessage, MomentsComment } from '../types';
+import type { AppState, MomentsPost, ChatMessage, MomentsComment, VirtualSpaceEntry } from '../types';
 import { callAI, buildJiangxunMessages, buildCharacterMessages } from '../services/ai';
 import { fetchWeather, weatherMood } from '../services/weather';
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 const JIANGXUN_POST_KEY = 'jiangxun-last-post';
+const JIANGXUN_VS_KEY = 'jiangxun-last-vs';
+const JX_VS_CANNED = [
+  '今天的晚风很轻，像小时候被揉过的头发',
+  '在自习室待了一下午，抬头发现已经黄昏',
+  '路过樱花树下，想起你说过喜欢',
+  '翻到了旧笔记本，中间夹着一张你写的便签',
+  '看了一小时云，什么都没想，却又好像想了很多',
+];
 const CHAR_LAST_MSG_PREFIX = 'char-last-msg-';
 const CHAR_LAST_REACT_PREFIX = 'char-last-react-';
 
@@ -95,6 +103,38 @@ export function useAutoMoments() {
         };
         dispatch({ type: 'ADD_MOMENT', payload: post });
         writeTs(JIANGXUN_POST_KEY, now);
+      }
+
+      // ===== 1b. Jiangxun virtual-space memo (1-2 per day) =====
+      const lastVs = readTs(JIANGXUN_VS_KEY);
+      const sinceLast = now - lastVs;
+      // Target: 12-20 hour gap so we get ~1-2 per day naturally
+      if (hour >= 9 && hour < 23 && sinceLast > (12 + Math.random() * 8) * 60 * 60 * 1000) {
+        let content: string | null = null;
+        if (s.apiKey) {
+          try {
+            const extra =
+              `[此刻你在空间里写一条只给京京一个人看的小短句（不超过20字），` +
+              `像QQ情侣空间那种随手记录心情。不要@，不要说教，不要emoji堆砌。]`;
+            const reply = await callAI(
+              s.apiKey,
+              s.aiModel,
+              buildJiangxunMessages([], s.relationshipStatus, extra, s.memories),
+            );
+            if (reply && !reply.startsWith('[')) content = reply.trim().slice(0, 80);
+          } catch { /* ignore */ }
+        }
+        if (!content) content = pick(JX_VS_CANNED);
+
+        const entry: VirtualSpaceEntry = {
+          id: `vs-jx-${now}`,
+          date: new Date().toISOString().slice(0, 10),
+          authorId: 'jiangxun',
+          content,
+          timestamp: now,
+        };
+        dispatch({ type: 'ADD_VS_ENTRY', payload: entry });
+        writeTs(JIANGXUN_VS_KEY, now);
       }
 
       // ===== 2. Custom character proactive chats =====

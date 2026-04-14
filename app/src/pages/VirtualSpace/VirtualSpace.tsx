@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff, Film, X } from 'lucide-react';
+import type { StoryReplay } from '../../types';
 import './VirtualSpace.css';
 
 export default function VirtualSpace() {
@@ -11,8 +12,9 @@ export default function VirtualSpace() {
   const [newFeeling, setNewFeeling] = useState('');
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [periodStart, setPeriodStart] = useState('');
-  const [showTab, setShowTab] = useState<'notes' | 'period'>('notes');
+  const [showTab, setShowTab] = useState<'notes' | 'period' | 'replay'>('notes');
   const [viewAs, setViewAs] = useState<'user' | 'jiangxun'>('user');
+  const [viewingReplay, setViewingReplay] = useState<StoryReplay | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -108,6 +110,23 @@ export default function VirtualSpace() {
     dispatch({ type: 'UPDATE_PERIOD', payload: { id, updates: { endDate: today } } });
   }
 
+  // Click a calendar day while in "period" tab: first click starts a new
+  // period on that day; if there's an open period, second click sets its end.
+  function togglePeriodOnDay(dateStr: string) {
+    const open = state.periodRecords.find(p => !p.endDate);
+    if (!open) {
+      dispatch({
+        type: 'ADD_PERIOD',
+        payload: { id: `period-${Date.now()}`, startDate: dateStr },
+      });
+    } else if (dateStr >= open.startDate) {
+      dispatch({
+        type: 'UPDATE_PERIOD',
+        payload: { id: open.id, updates: { endDate: dateStr } },
+      });
+    }
+  }
+
   // Predict next period
   const completedPeriods = state.periodRecords.filter(p => p.endDate);
   let predictedNext = '';
@@ -142,6 +161,11 @@ export default function VirtualSpace() {
             style={{ padding: '4px 12px', fontSize: 13 }}
             onClick={() => setShowTab('period')}
           >经期记录</button>
+          <button
+            className={showTab === 'replay' ? 'btn-primary' : 'btn-secondary'}
+            style={{ padding: '4px 12px', fontSize: 13 }}
+            onClick={() => setShowTab('replay')}
+          >剧情回放</button>
         </div>
       </div>
 
@@ -171,7 +195,10 @@ export default function VirtualSpace() {
               <div
                 key={day}
                 className={`calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasPeriod ? 'period' : ''}`}
-                onClick={() => setSelectedDate(dateStr)}
+                onClick={() => {
+                  setSelectedDate(dateStr);
+                  if (showTab === 'period') togglePeriodOnDay(dateStr);
+                }}
               >
                 {day}
                 {hasNote && <div className="day-dot note-dot" />}
@@ -265,6 +292,79 @@ export default function VirtualSpace() {
         </div>
       )}
 
+      {showTab === 'replay' && (
+        <div className="vs-content">
+          <div className="vs-date-title">
+            <Film size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            剧情回放
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 10 }}>
+            在微信聊天里长按进入多选，选中想保存的片段，就会出现在这里。
+          </div>
+          {(state.storyReplays || []).length === 0 ? (
+            <div className="empty-state" style={{ padding: '24px 0' }}>
+              <p>还没有剧情片段</p>
+            </div>
+          ) : (
+            <div className="replay-list">
+              {(state.storyReplays || []).map(r => {
+                const contact = state.contacts.find(c => c.id === r.contactId);
+                return (
+                  <div key={r.id} className="replay-item">
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500 }}>{r.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
+                        {contact?.name || '—'} · {new Date(r.createdAt).toLocaleDateString()}
+                        · {r.messageIds.length} 条
+                      </div>
+                    </div>
+                    <button className="btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setViewingReplay(r)}>
+                      查看
+                    </button>
+                    <button
+                      className="btn-danger"
+                      style={{ padding: '4px 10px', marginLeft: 6 }}
+                      onClick={() => dispatch({ type: 'DELETE_STORY_REPLAY', payload: r.id })}
+                    >删除</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewingReplay && (() => {
+        const msgs = state.messages[viewingReplay.contactId] || [];
+        const selected = msgs.filter(m => viewingReplay.messageIds.includes(m.id));
+        return (
+          <div className="replay-modal-backdrop" onClick={() => setViewingReplay(null)}>
+            <div className="replay-modal" onClick={e => e.stopPropagation()}>
+              <div className="replay-modal-header">
+                <div style={{ fontWeight: 600 }}>{viewingReplay.title}</div>
+                <button className="back-btn" onClick={() => setViewingReplay(null)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="replay-modal-body">
+                {selected.length === 0 && <div className="empty-state"><p>片段已丢失</p></div>}
+                {selected.map(m => (
+                  <div key={m.id} className={`replay-bubble ${m.senderId === 'user' ? 'self' : ''}`}>
+                    <div className="replay-sender">{m.senderName}</div>
+                    <div className="replay-text">
+                      {m.type === 'action' ? `*${m.content}*` :
+                       m.type === 'red-packet' ? `[红包 ¥${m.redPacketAmount}] ${m.redPacketNote || ''}` :
+                       m.type === 'location' ? `[位置] ${m.location || m.content}` :
+                       m.content}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {showTab === 'period' && (
         <div className="vs-content">
           <div className="vs-date-title">经期记录</div>
@@ -293,6 +393,10 @@ export default function VirtualSpace() {
               </div>
             </div>
           )}
+
+          <div className="period-hint" style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 8 }}>
+            💡 在"经期记录"模式下，直接点日历就能标记开始 / 结束。
+          </div>
 
           <div className="period-list">
             {state.periodRecords.length === 0 ? (
