@@ -732,6 +732,19 @@
   margin: 0;
 }
 
+.moments-cover {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.moments-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .moments-list {
   flex: 1;
   overflow-y: auto;

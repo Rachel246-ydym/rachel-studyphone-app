@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ArrowLeft, Heart, MessageSquare, Plus } from 'lucide-react';
+import { ArrowLeft, Heart, MessageSquare, Plus, Image as ImageIcon } from 'lucide-react';
 import type { MomentsComment } from '../../types';
 
 interface Props {
   onBack: () => void;
+}
+
+async function fileToDataUrl(file: File, max = 1024): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bmp, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', 0.82);
 }
 
 export default function Moments({ onBack }: Props) {
@@ -12,6 +25,15 @@ export default function Moments({ onBack }: Props) {
   const [newPost, setNewPost] = useState('');
   const [showNewPost, setShowNewPost] = useState(false);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  async function onBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = await fileToDataUrl(f);
+    dispatch({ type: 'SET_MOMENTS_BG', payload: url });
+    e.target.value = '';
+  }
 
   function handlePost() {
     if (!newPost.trim()) return;
@@ -95,10 +117,28 @@ export default function Moments({ onBack }: Props) {
           <ArrowLeft size={20} />
         </button>
         <h3>朋友圈</h3>
-        <button className="header-btn" onClick={() => setShowNewPost(!showNewPost)}>
-          <Plus size={18} />
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="header-btn" onClick={() => bgFileRef.current?.click()} title="更换背景图">
+            <ImageIcon size={18} />
+          </button>
+          <button className="header-btn" onClick={() => setShowNewPost(!showNewPost)}>
+            <Plus size={18} />
+          </button>
+        </div>
+        <input
+          ref={bgFileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={onBgUpload}
+        />
       </div>
+
+      {state.momentsBackgroundImage && (
+        <div className="moments-cover">
+          <img src={state.momentsBackgroundImage} alt="" />
+        </div>
+      )}
 
       {showNewPost && (
         <div style={{ padding: 16, background: 'var(--bg-white)', borderBottom: '1px solid var(--border)' }}>

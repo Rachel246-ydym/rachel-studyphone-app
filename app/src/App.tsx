@@ -10,6 +10,7 @@ import Accounting from './pages/Accounting/Accounting';
 import ExamSimulator from './pages/ExamSimulator/ExamSimulator';
 import Settings from './pages/Settings/Settings';
 import { useAutoMessages } from './hooks/useAutoMessages';
+import { useAutoMoments } from './hooks/useAutoMoments';
 import './App.css';
 
 function AppContent() {
@@ -18,6 +19,7 @@ function AppContent() {
   // Run the Jiangxun auto-message scheduler at app level so it keeps firing
   // regardless of which page is active.
   useAutoMessages();
+  useAutoMoments();
 
   const pageMap: Record<string, React.ReactNode> = {
     'wechat': <WeChat />,

@@ -1,10 +1,24 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ArrowLeft, Plus, Trash2, MessageCircle, Users } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, MessageCircle, Users, Camera } from 'lucide-react';
 import type { CharacterCard, ChatContact } from '../../types';
 
 interface Props {
   onBack: () => void;
+}
+
+// Shrink an uploaded image to a reasonable size before storing in localStorage.
+async function fileToDataUrl(file: File, max = 256): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bmp, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', 0.85);
 }
 
 export default function CharacterManager({ onBack }: Props) {
@@ -13,8 +27,52 @@ export default function CharacterManager({ onBack }: Props) {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [groupPassword, setGroupPassword] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  // Per-card avatar change uses one shared file input; we remember which card
+  // should receive the next picked file.
+  const targetCardRef = useRef<string | null>(null);
+  const cardFileRef = useRef<HTMLInputElement>(null);
+
+  async function onAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = await fileToDataUrl(f);
+    setAvatar(url);
+    e.target.value = '';
+  }
+
+  async function onCardAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f || !targetCardRef.current) return;
+    const url = await fileToDataUrl(f);
+    const charId = targetCardRef.current;
+    // Update character itself
+    const char = state.characters.find(c => c.id === charId);
+    if (char) {
+      dispatch({
+        type: 'REMOVE_CHARACTER',
+        payload: charId,
+      });
+      dispatch({
+        type: 'ADD_CHARACTER',
+        payload: { ...char, avatar: url },
+      });
+    }
+    // Also update the linked contact avatar so ChatList shows it
+    const contact = state.contacts.find(c => c.characterId === charId);
+    if (contact) {
+      dispatch({
+        type: 'UPDATE_CONTACT',
+        payload: { id: contact.id, updates: { avatar: url } },
+      });
+    }
+    targetCardRef.current = null;
+    e.target.value = '';
+  }
 
   function addCharacter() {
     if (!name.trim() || !personality.trim()) return;
@@ -22,7 +80,7 @@ export default function CharacterManager({ onBack }: Props) {
     const card: CharacterCard = {
       id,
       name: name.trim(),
-      avatar: '',
+      avatar,
       personality: personality.trim(),
       createdAt: Date.now(),
     };
@@ -33,7 +91,7 @@ export default function CharacterManager({ onBack }: Props) {
       id: `contact-${id}`,
       type: 'private',
       name: card.name,
-      avatar: '',
+      avatar,
       characterId: id,
       createdBy: 'user',
       lastMessage: '',
@@ -44,15 +102,33 @@ export default function CharacterManager({ onBack }: Props) {
 
     setName('');
     setPersonality('');
+    setAvatar('');
     setShowAdd(false);
   }
 
   function removeCharacter(charId: string) {
+    if (!confirm('确定删除这个角色吗？相关聊天记录会一起清理。')) return;
+    // Find & remove the paired private contact and its message thread
+    const contact = state.contacts.find(c => c.characterId === charId);
+    if (contact) {
+      dispatch({ type: 'REPLACE_MESSAGES', payload: { contactId: contact.id, messages: [] } });
+      // We don't have REMOVE_CONTACT reducer; mark with empty name to hide would
+      // be ugly. Use a soft filter via SET_STATE partial instead.
+      dispatch({
+        type: 'SET_STATE',
+        payload: {
+          contacts: state.contacts.filter(c => c.id !== contact.id),
+          // Also prune group memberships
+          // (we keep group contacts but drop this id from their members list)
+        },
+      });
+    }
     dispatch({ type: 'REMOVE_CHARACTER', payload: charId });
   }
 
   function createGroup() {
     if (!groupName.trim() || selectedMembers.length === 0) return;
+    const pwd = groupPassword.trim();
     const contact: ChatContact = {
       id: `group-${Date.now()}`,
       type: 'group',
@@ -63,9 +139,11 @@ export default function CharacterManager({ onBack }: Props) {
       lastMessage: '',
       lastMessageTime: Date.now(),
       unread: 0,
+      ...(pwd ? { passwordProtected: true, password: pwd } : {}),
     };
     dispatch({ type: 'ADD_CONTACT', payload: contact });
     setGroupName('');
+    setGroupPassword('');
     setSelectedMembers([]);
     setShowGroupForm(false);
   }
@@ -105,6 +183,14 @@ export default function CharacterManager({ onBack }: Props) {
             <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="输入群聊名称" />
           </div>
           <div className="form-group">
+            <label>群密码（可选，设置后进群需要密码）</label>
+            <input
+              value={groupPassword}
+              onChange={e => setGroupPassword(e.target.value)}
+              placeholder="留空 = 公开群；输入则变为加密群"
+            />
+          </div>
+          <div className="form-group">
             <label>选择成员</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
               {allCharacters.map(c => (
@@ -129,6 +215,24 @@ export default function CharacterManager({ onBack }: Props) {
       {showAdd && (
         <div className="add-character-form">
           <div className="form-group">
+            <label>头像</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="character-avatar" style={{ width: 56, height: 56 }}>
+                {avatar ? <img src={avatar} alt="" /> : (name[0] || '?')}
+              </div>
+              <button className="btn-secondary" onClick={() => fileRef.current?.click()}>
+                <Camera size={14} /> 上传头像
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={onAvatarFile}
+              />
+            </div>
+          </div>
+          <div className="form-group">
             <label>角色名称</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="输入角色名称" />
           </div>
@@ -141,13 +245,21 @@ export default function CharacterManager({ onBack }: Props) {
             />
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>取消</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setAvatar(''); }}>取消</button>
             <button className="btn-primary" onClick={addCharacter}>
               <Plus size={14} /> 添加角色
             </button>
           </div>
         </div>
       )}
+
+      <input
+        ref={cardFileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={onCardAvatarFile}
+      />
 
       <div className="characters-list">
         {state.characters.length === 0 ? (
@@ -158,9 +270,14 @@ export default function CharacterManager({ onBack }: Props) {
         ) : (
           state.characters.map(char => (
             <div key={char.id} className="character-card">
-              <div className="character-avatar">
+              <button
+                className="character-avatar"
+                title="更换头像"
+                onClick={() => { targetCardRef.current = char.id; cardFileRef.current?.click(); }}
+                style={{ border: 'none', cursor: 'pointer', padding: 0 }}
+              >
                 {char.avatar ? <img src={char.avatar} alt="" /> : char.name[0]}
-              </div>
+              </button>
               <div className="character-details">
                 <div className="character-name">{char.name}</div>
                 <div className="character-personality">{char.personality}</div>
