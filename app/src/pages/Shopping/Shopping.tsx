@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../store/AppContext';
 import { ShoppingCart, Coins, Receipt, Tag, Gift } from 'lucide-react';
 import type { Product, ShoppingReceipt, ChatMessage } from '../../types';
+import {
+  callAI,
+  buildShoppingCartReactionPrompt,
+  buildShoppingCheckoutPrompt,
+  buildJiangxunMessages,
+} from '../../services/ai';
 import './Shopping.css';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -20,6 +26,20 @@ export default function Shopping() {
   const [showCart, setShowCart] = useState(false);
   const [showReceipts, setShowReceipts] = useState(false);
   const [buyAs, setBuyAs] = useState<'user' | 'together'>('user');
+  // Reaction cooldown — never fire two JX reactions within 15s to avoid API burn.
+  const lastReactionRef = useRef<number>(0);
+
+  // Companion mode: when entering via the WeChat "去购物" prompt, flip straight
+  // into "和江浔一起" and open the cart so the intent is obvious.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('shopping-companion') === '1') {
+        setBuyAs('together');
+        setShowCart(true);
+        localStorage.removeItem('shopping-companion');
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const categories = Object.keys(CATEGORY_LABELS).filter(cat => {
     if (cat === 'adult') return state.relationshipStatus === 'lover';
@@ -39,6 +59,94 @@ export default function Shopping() {
     } else {
       setCart([...cart, { product, quantity: 1 }]);
     }
+    // Fire a one-sentence JX reaction via chat (throttled)
+    fireCartReaction(product);
+  }
+
+  async function fireCartReaction(product: Product) {
+    if (!state.apiKey) return;
+    const now = Date.now();
+    if (now - lastReactionRef.current < 15000) return; // 15s cooldown
+    lastReactionRef.current = now;
+    try {
+      const extra = buildShoppingCartReactionPrompt(product.name, product.category);
+      const reply = await callAI(
+        state.apiKey,
+        state.aiModel,
+        buildJiangxunMessages([], state.relationshipStatus, extra, state.memories),
+      );
+      if (!reply || reply.startsWith('[')) return;
+      const msg: ChatMessage = {
+        id: `cart-react-${now}`,
+        contactId: 'jiangxun',
+        senderId: 'jiangxun',
+        senderName: '江浔',
+        content: reply.trim().slice(0, 60),
+        type: 'text',
+        timestamp: now,
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: msg });
+      const jx = state.contacts.find(c => c.id === 'jiangxun');
+      dispatch({
+        type: 'UPDATE_CONTACT',
+        payload: {
+          id: 'jiangxun',
+          updates: {
+            lastMessage: msg.content.slice(0, 30),
+            lastMessageTime: now,
+            unread: (jx?.unread || 0) + 1,
+          },
+        },
+      });
+    } catch { /* ignore */ }
+  }
+
+  async function fireCheckoutComment(receiptId: string, items: typeof cart, total: number, payer: 'user' | 'jiangxun') {
+    if (!state.apiKey) return;
+    try {
+      const itemList = items.map(i => `${i.product.name}×${i.quantity}`).join('、');
+      const extra = buildShoppingCheckoutPrompt(itemList, total, payer);
+      const reply = await callAI(
+        state.apiKey,
+        state.aiModel,
+        buildJiangxunMessages([], state.relationshipStatus, extra, state.memories),
+      );
+      if (!reply || reply.startsWith('[')) return;
+      const comment = reply.trim().slice(0, 80);
+      // Update the receipt in-place via SET_STATE (no dedicated UPDATE_RECEIPT action)
+      dispatch({
+        type: 'SET_STATE',
+        payload: {
+          receipts: state.receipts
+            .concat([])
+            .map(r => (r.id === receiptId ? { ...r, jiangxunComment: comment } : r)),
+        },
+      });
+      // Also push a short JX chat echoing the comment
+      const now = Date.now();
+      const msg: ChatMessage = {
+        id: `checkout-react-${now}`,
+        contactId: 'jiangxun',
+        senderId: 'jiangxun',
+        senderName: '江浔',
+        content: comment,
+        type: 'text',
+        timestamp: now,
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: msg });
+      const jx = state.contacts.find(c => c.id === 'jiangxun');
+      dispatch({
+        type: 'UPDATE_CONTACT',
+        payload: {
+          id: 'jiangxun',
+          updates: {
+            lastMessage: comment.slice(0, 30),
+            lastMessageTime: now,
+            unread: (jx?.unread || 0) + 1,
+          },
+        },
+      });
+    } catch { /* ignore */ }
   }
 
   function removeFromCart(productId: string) {
@@ -100,6 +208,7 @@ export default function Shopping() {
       timestamp: Date.now(),
     };
     dispatch({ type: 'ADD_RECEIPT', payload: receipt });
+    fireCheckoutComment(receipt.id, cart, total, 'user');
     setCart([]);
     setShowCart(false);
   }
@@ -119,6 +228,7 @@ export default function Shopping() {
       jiangxunComment: '这点东西还用你付',
     };
     dispatch({ type: 'ADD_RECEIPT', payload: receipt });
+    fireCheckoutComment(receipt.id, cart, total, 'jiangxun');
     setCart([]);
     setShowCart(false);
   }

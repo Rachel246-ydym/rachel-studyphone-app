@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../store/AppContext';
-import { callAI, buildJiangxunMessages, buildCharacterMessages, buildHomeworkReminderPrompt } from '../../services/ai';
+import { callAI, buildJiangxunMessages, buildCharacterMessages, buildHomeworkReminderPrompt, extractLocationFromText } from '../../services/ai';
 import { ArrowLeft, MoreVertical, Send, Gift, MapPin, RotateCw, Pencil, Star, Trash2, Plus, X } from 'lucide-react';
 import type { ChatMessage, MemoryEntry, MemoryCategory } from '../../types';
 
@@ -215,6 +215,43 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
         });
       }
     }
+    // Chat-map consistency: if 江浔 mentioned a known place, auto-log an
+    // arrive event (+ a leave event for the previous location).
+    if (contactId === 'jiangxun') {
+      const newLocation = extractLocationFromText(aiReply);
+      if (newLocation) {
+        const now = Date.now();
+        const todayStr = new Date(now).toISOString().slice(0, 10);
+        // Find latest arrive event from today
+        const todaysArrivals = state.mapEvents
+          .filter(e => new Date(e.timestamp).toISOString().slice(0, 10) === todayStr && e.action.includes('到达'))
+          .sort((a, b) => b.timestamp - a.timestamp);
+        const prev = todaysArrivals[0];
+        if (!prev || prev.location !== newLocation) {
+          if (prev) {
+            dispatch({
+              type: 'ADD_MAP_EVENT',
+              payload: {
+                id: `map-leave-chat-${now}`,
+                timestamp: now,
+                location: prev.location,
+                action: `离开${prev.location}`,
+              },
+            });
+          }
+          dispatch({
+            type: 'ADD_MAP_EVENT',
+            payload: {
+              id: `map-arrive-chat-${now + 1}`,
+              timestamp: now + 1,
+              location: newLocation,
+              action: `到达${newLocation}`,
+              detail: '（从聊天推导）',
+            },
+          });
+        }
+      }
+    }
   }
 
   async function handleSend() {
@@ -228,13 +265,14 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
       content: userMsg,
       type: 'text',
     });
-    // Keyword: mentioning 购物 surfaces a quick shortcut into the shopping page.
+    // Keyword: mentioning 购物 surfaces an interactive system message that
+    // jumps straight into the shopping module in "with 江浔" companion mode.
     if (/购物|买东西|购物车/.test(userMsg)) {
       addMessage({
         contactId,
         senderId: 'system',
         senderName: '系统',
-        content: '🛍️ 检测到购物意向，点击侧边栏"购物"模块直接进入商店。',
+        content: '🛍️__SHOPPING_PROMPT__是否跟江浔一起去购物？',
         type: 'system',
       });
     }
@@ -428,7 +466,23 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
               )}
 
               {msg.type === 'system' ? (
-                <div className="message-system">{msg.content}</div>
+                msg.content.includes('__SHOPPING_PROMPT__') ? (
+                  <div className="message-system system-interactive">
+                    🛍️ 是否跟江浔一起去购物？
+                    <button
+                      className="btn-primary"
+                      style={{ marginLeft: 8, padding: '3px 12px', fontSize: 12 }}
+                      onClick={() => {
+                        try { localStorage.setItem('shopping-companion', '1'); } catch { /* ignore */ }
+                        dispatch({ type: 'SET_ACTIVE_PAGE', payload: 'shopping' });
+                      }}
+                    >
+                      去购物
+                    </button>
+                  </div>
+                ) : (
+                  <div className="message-system">{msg.content}</div>
+                )
               ) : msg.type === 'action' ? (
                 <div className="message-action">{msg.content}{msg.edited && <span className="edited-mark"> · 已编辑</span>}</div>
               ) : msg.type === 'red-packet' ? (

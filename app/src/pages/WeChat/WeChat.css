@@ -646,6 +646,16 @@
   align-self: center;
 }
 
+.message-system.system-interactive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #fff3cd, #ffe69c);
+  color: #6b4e16;
+  padding: 8px 14px;
+  margin: 4px auto;
+}
+
 /* ===== Chat Input ===== */
 .chat-input-area {
   display: flex;
