@@ -182,4 +182,70 @@ export function buildAccountingReactionPrompt(description: string, amount: numbe
 请以江浔的身份做一个简短的反应（20字以内），可以是关心、调侃或建议，要自然不说教。`;
 }
 
+// ============ batch 8 新增 prompts ============
+
+// 江浔对京京购物行为的实时一句话评论（加入购物车时）
+export function buildShoppingCartReactionPrompt(productName: string, category: string): string {
+  return `京京刚刚把「${productName}」加进了购物车（分类：${category}）。
+请以江浔的身份说一句话反应，15-25 字，自然的网友聊天风格，可以是调侃、认可、期待或温柔关心。
+不要说教，不要解释，只输出这一句话本身。`;
+}
+
+// 结算小票时的一两句话点评
+export function buildShoppingCheckoutPrompt(itemList: string, total: number, payer: 'user' | 'jiangxun'): string {
+  const payerText = payer === 'jiangxun' ? '这次是你帮京京付的' : '京京这次自己付的';
+  return `京京刚刚在商店结账了，买了：${itemList}，合计 ${total} 海币。${payerText}。
+以江浔的身份发 1-2 句话（合计不超过 40 字），像微信聊天那样。不要说教，不要列清单，自然一些。`;
+}
+
+// 江浔的 AI 备忘录（虚拟空间）生成
+export function buildJiangxunMemoPrompt(kind: 'memory' | 'heart' | 'loveletter'): string {
+  const kindDesc = {
+    memory: '一段只有你才知道的、关于你和京京的小记忆（一个画面、一个细节、一件小事）',
+    heart: '一句只写给自己看的心里话（可以是担心、想念、幼稚的占有欲、偷偷的骄傲）',
+    loveletter: '一小段简短的情书式独白（不肉麻，不油腻，有节制的浪漫）',
+  }[kind];
+  return `此刻你在虚拟空间里写一条小笔记——${kindDesc}。
+要求：30-60 字；第一人称；不要开头"亲爱的京京/她"这种称呼；像江浔在日记本上随手写的；不要 emoji 堆砌；不要换行。`;
+}
+
+// 江浔对"我的备忘录"留下的印记
+export function buildJiangxunImprintPrompt(noteContent: string): string {
+  return `京京在虚拟空间里写了一条自己的笔记：
+"${noteContent}"
+
+你偷偷看到了这条笔记，想留下一句"印记"——就像在便签角落写一行字。
+要求：15-30 字；可以是回应、吐槽、温柔的一句、承诺或者安慰；不要重复京京的话；不要说教；不要 emoji 堆砌。
+只输出这一句话本身。`;
+}
+
+// 从 AI 回复里提取可能的地点关键词 → 用于驱动地图事件
+export const LOCATION_KEYWORDS: { keyword: string; location: string }[] = [
+  { keyword: '食堂', location: '食堂' },
+  { keyword: '吃饭', location: '食堂' },
+  { keyword: '吃午饭', location: '食堂' },
+  { keyword: '吃晚饭', location: '食堂' },
+  { keyword: '教学楼', location: '教学楼' },
+  { keyword: '上课', location: '教学楼' },
+  { keyword: '教室', location: '教学楼' },
+  { keyword: '图书馆', location: '图书馆' },
+  { keyword: '自习', location: '图书馆' },
+  { keyword: '研究室', location: '研究室' },
+  { keyword: '实验室', location: '研究室' },
+  { keyword: '广场', location: '中心广场' },
+  { keyword: '健身房', location: '健身房' },
+  { keyword: '跑步', location: '健身房' },
+  { keyword: '咖啡', location: '咖啡馆' },
+  { keyword: '公寓', location: '江浔的公寓' },
+  { keyword: '回宿舍', location: '江浔的公寓' },
+  { keyword: '回家', location: '江浔的公寓' },
+];
+
+export function extractLocationFromText(text: string): string | null {
+  for (const { keyword, location } of LOCATION_KEYWORDS) {
+    if (text.includes(keyword)) return location;
+  }
+  return null;
+}
+
 export { getCrossAccountDetectionPrompt, getCharacterPrompt, JIANGXUN_SYSTEM_PROMPT };

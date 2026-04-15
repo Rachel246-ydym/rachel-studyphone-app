@@ -22,6 +22,8 @@ export interface CharacterCard {
   avatar: string;
   personality: string; // role setting / system prompt
   createdAt: number;
+  /** 是否允许该角色主动发消息/朋友圈。默认 true，设为 false 可节省 API 调用。 */
+  autoEnabled?: boolean;
 }
 
 export interface ChatContact {
@@ -37,6 +39,8 @@ export interface ChatContact {
   unread: number;
   passwordProtected?: boolean; // for jiangxun's private groups
   password?: string;
+  /** 是否 session 内已临时解锁（仅本次聊天内，退出后需再次输入） */
+  sessionUnlocked?: boolean;
 }
 
 export interface ChatMessage {
@@ -107,6 +111,10 @@ export interface VirtualSpaceEntry {
   authorId: string; // 'user' | 'jiangxun'
   content: string;
   timestamp: number;
+  /** 江浔对"我的备忘录"留下的 AI 印记；可重新生成/编辑 */
+  jiangxunImprint?: string;
+  /** 江浔的 AI 备忘录子类型（心里话/情书/记忆） */
+  jxKind?: 'memory' | 'heart' | 'loveletter';
 }
 
 export interface Footprint {
@@ -238,6 +246,8 @@ export interface Transaction {
 }
 
 // ============ Exam Simulator ============
+export type EnglishSubtype = 'words' | 'listening' | 'reading' | 'writing';
+
 export interface StudyTask {
   id: string;
   date: string; // YYYY-MM-DD
@@ -249,6 +259,10 @@ export interface StudyTask {
   isReview: boolean;
   reviewOf?: string; // original task id
   haibiReward: number;
+  /** 英语子类型，用于成就与进度统计 */
+  englishSubtype?: EnglishSubtype;
+  /** 是否由补卡完成（不触发江浔聊天、不计入连续打卡） */
+  makeup?: boolean;
 }
 
 export interface Achievement {
