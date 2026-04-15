@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff, Film, X } from 'lucide-react';
-import type { StoryReplay } from '../../types';
+import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff, Film, X, RefreshCw, Sparkles, Lock, Star } from 'lucide-react';
+import type { StoryReplay, VirtualSpaceEntry } from '../../types';
+import {
+  callAI,
+  buildJiangxunMessages,
+  buildJiangxunMemoPrompt,
+  buildJiangxunImprintPrompt,
+} from '../../services/ai';
 import './VirtualSpace.css';
 
 export default function VirtualSpace() {
@@ -12,9 +18,17 @@ export default function VirtualSpace() {
   const [newFeeling, setNewFeeling] = useState('');
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [periodStart, setPeriodStart] = useState('');
-  const [showTab, setShowTab] = useState<'notes' | 'period' | 'replay'>('notes');
+  const [showTab, setShowTab] = useState<'notes' | 'period' | 'replay' | 'memory'>('notes');
   const [viewAs, setViewAs] = useState<'user' | 'jiangxun'>('user');
   const [viewingReplay, setViewingReplay] = useState<StoryReplay | null>(null);
+  // Period day click menu
+  const [periodMenuFor, setPeriodMenuFor] = useState<string | null>(null);
+  // Memory library password gate
+  const [memPwdInput, setMemPwdInput] = useState('');
+  const [memPwdAttempts, setMemPwdAttempts] = useState(0);
+  const [memUnlocked, setMemUnlocked] = useState(false);
+  // AI busy flags
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -110,20 +124,130 @@ export default function VirtualSpace() {
     dispatch({ type: 'UPDATE_PERIOD', payload: { id, updates: { endDate: today } } });
   }
 
-  // Click a calendar day while in "period" tab: first click starts a new
-  // period on that day; if there's an open period, second click sets its end.
-  function togglePeriodOnDay(dateStr: string) {
+  // Period day menu actions
+  function periodStartOn(dateStr: string) {
+    dispatch({
+      type: 'ADD_PERIOD',
+      payload: { id: `period-${Date.now()}`, startDate: dateStr },
+    });
+    setPeriodMenuFor(null);
+  }
+  function periodEndOn(dateStr: string) {
     const open = state.periodRecords.find(p => !p.endDate);
-    if (!open) {
-      dispatch({
-        type: 'ADD_PERIOD',
-        payload: { id: `period-${Date.now()}`, startDate: dateStr },
-      });
-    } else if (dateStr >= open.startDate) {
+    if (open && dateStr >= open.startDate) {
       dispatch({
         type: 'UPDATE_PERIOD',
         payload: { id: open.id, updates: { endDate: dateStr } },
       });
+    }
+    setPeriodMenuFor(null);
+  }
+  function periodUndoOn(dateStr: string) {
+    // Remove any period record whose startDate matches; if an endDate
+    // matches, just clear the endDate.
+    const matchStart = state.periodRecords.find(p => p.startDate === dateStr);
+    const matchEnd = state.periodRecords.find(p => p.endDate === dateStr);
+    if (matchStart) {
+      dispatch({
+        type: 'SET_STATE',
+        payload: {
+          periodRecords: state.periodRecords.filter(p => p.id !== matchStart.id),
+        },
+      });
+    } else if (matchEnd) {
+      dispatch({
+        type: 'UPDATE_PERIOD',
+        payload: { id: matchEnd.id, updates: { endDate: undefined } },
+      });
+    }
+    setPeriodMenuFor(null);
+  }
+
+  // JX memo regenerate — replaces an existing JX virtual-space entry with new content
+  async function regenerateJxMemo(entry: VirtualSpaceEntry) {
+    if (!state.apiKey || aiBusy) return;
+    setAiBusy(entry.id);
+    try {
+      const kind = entry.jxKind || 'memory';
+      const reply = await callAI(
+        state.apiKey,
+        state.aiModel,
+        buildJiangxunMessages([], state.relationshipStatus, buildJiangxunMemoPrompt(kind), state.memories),
+      );
+      if (reply && !reply.startsWith('[')) {
+        dispatch({
+          type: 'SET_STATE',
+          payload: {
+            virtualSpaceEntries: state.virtualSpaceEntries.map(e =>
+              e.id === entry.id ? { ...e, content: reply.trim().slice(0, 80) } : e,
+            ),
+          },
+        });
+      }
+    } catch { /* ignore */ }
+    setAiBusy(null);
+  }
+
+  // Generate a fresh JX memo on demand (for the "请江浔写一条" button)
+  async function generateJxMemo(kind: 'memory' | 'heart' | 'loveletter') {
+    if (!state.apiKey || !selectedDate || aiBusy) return;
+    setAiBusy('new-jx-memo');
+    try {
+      const reply = await callAI(
+        state.apiKey,
+        state.aiModel,
+        buildJiangxunMessages([], state.relationshipStatus, buildJiangxunMemoPrompt(kind), state.memories),
+      );
+      const content = (reply && !reply.startsWith('[')) ? reply.trim().slice(0, 80) : '今天想你了。';
+      const entry: VirtualSpaceEntry = {
+        id: `vs-jx-${Date.now()}`,
+        date: selectedDate,
+        authorId: 'jiangxun',
+        content,
+        timestamp: Date.now(),
+        jxKind: kind,
+      };
+      dispatch({ type: 'ADD_VS_ENTRY', payload: entry });
+    } catch { /* ignore */ }
+    setAiBusy(null);
+  }
+
+  // Ask JX to leave an imprint on a user's note
+  async function askJxImprint(entry: VirtualSpaceEntry) {
+    if (!state.apiKey || aiBusy) return;
+    setAiBusy(entry.id);
+    try {
+      const reply = await callAI(
+        state.apiKey,
+        state.aiModel,
+        buildJiangxunMessages([], state.relationshipStatus, buildJiangxunImprintPrompt(entry.content), state.memories),
+      );
+      if (reply && !reply.startsWith('[')) {
+        dispatch({
+          type: 'SET_STATE',
+          payload: {
+            virtualSpaceEntries: state.virtualSpaceEntries.map(e =>
+              e.id === entry.id ? { ...e, jiangxunImprint: reply.trim().slice(0, 60) } : e,
+            ),
+          },
+        });
+      }
+    } catch { /* ignore */ }
+    setAiBusy(null);
+  }
+
+  // Memory library password gate — same 0921 / 0709 default policy as JX groups
+  function tryMemPwd() {
+    if (['0921', '0709'].includes(memPwdInput)) {
+      setMemUnlocked(true);
+      setMemPwdInput('');
+      return;
+    }
+    const next = memPwdAttempts + 1;
+    setMemPwdAttempts(next);
+    setMemPwdInput('');
+    if (next >= 3) {
+      setMemUnlocked(true);
     }
   }
 
@@ -166,6 +290,11 @@ export default function VirtualSpace() {
             style={{ padding: '4px 12px', fontSize: 13 }}
             onClick={() => setShowTab('replay')}
           >剧情回放</button>
+          <button
+            className={showTab === 'memory' ? 'btn-primary' : 'btn-secondary'}
+            style={{ padding: '4px 12px', fontSize: 13 }}
+            onClick={() => setShowTab('memory')}
+          >记忆库 🔒</button>
         </div>
       </div>
 
@@ -197,7 +326,7 @@ export default function VirtualSpace() {
                 className={`calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasPeriod ? 'period' : ''}`}
                 onClick={() => {
                   setSelectedDate(dateStr);
-                  if (showTab === 'period') togglePeriodOnDay(dateStr);
+                  if (showTab === 'period') setPeriodMenuFor(dateStr);
                 }}
               >
                 {day}
@@ -235,12 +364,58 @@ export default function VirtualSpace() {
                 ) : (
                   selectedEntries.map(entry => {
                     const entryFootprints = selectedFootprints.filter(f => f.entryId === entry.id);
+                    const isJx = entry.authorId === 'jiangxun';
+                    const busy = aiBusy === entry.id;
                     return (
                       <div key={entry.id} className="vs-entry-card">
                         <div className="vs-entry-author">
-                          {entry.authorId === 'user' ? state.userProfile.name : '江浔'}
+                          {isJx ? '江浔' : state.userProfile.name}
+                          {isJx && entry.jxKind && (
+                            <span className="vs-memo-kind">
+                              {entry.jxKind === 'memory' ? ' · 记忆' : entry.jxKind === 'heart' ? ' · 心里话' : ' · 情书'}
+                            </span>
+                          )}
                         </div>
                         <div className="vs-entry-content">{entry.content}</div>
+                        {/* JX memo regenerate */}
+                        {isJx && (
+                          <div className="vs-entry-actions">
+                            <button
+                              className="btn-secondary tiny"
+                              onClick={() => regenerateJxMemo(entry)}
+                              disabled={busy || !state.apiKey}
+                              title="让江浔重新写一条"
+                            >
+                              <RefreshCw size={11} className={busy ? 'spinning' : ''} /> 重写
+                            </button>
+                          </div>
+                        )}
+                        {/* User entry → ask JX to leave imprint */}
+                        {!isJx && (
+                          <div className="vs-entry-actions">
+                            {entry.jiangxunImprint ? (
+                              <div className="vs-jx-imprint">
+                                ✒️ 江浔的印记：{entry.jiangxunImprint}
+                                <button
+                                  className="btn-secondary tiny"
+                                  onClick={() => askJxImprint(entry)}
+                                  disabled={busy || !state.apiKey}
+                                  style={{ marginLeft: 6 }}
+                                >
+                                  <RefreshCw size={11} className={busy ? 'spinning' : ''} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="btn-secondary tiny"
+                                onClick={() => askJxImprint(entry)}
+                                disabled={busy || !state.apiKey}
+                              >
+                                <Sparkles size={11} /> 请江浔留印记
+                              </button>
+                            )}
+                          </div>
+                        )}
                         {entryFootprints.map(fp => (
                           <div key={fp.id} className="vs-footprint">
                             <div className="footprint-visible">
@@ -282,6 +457,12 @@ export default function VirtualSpace() {
                 <button className="btn-primary" onClick={addEntry} style={{ marginTop: 4 }}>
                   <Plus size={14} /> 添加
                 </button>
+                <div className="vs-jx-memo-row">
+                  <span style={{ fontSize: 11, color: 'var(--text-light)' }}>请江浔写：</span>
+                  <button className="btn-secondary tiny" disabled={!state.apiKey || aiBusy === 'new-jx-memo'} onClick={() => generateJxMemo('memory')}>记忆</button>
+                  <button className="btn-secondary tiny" disabled={!state.apiKey || aiBusy === 'new-jx-memo'} onClick={() => generateJxMemo('heart')}>心里话</button>
+                  <button className="btn-secondary tiny" disabled={!state.apiKey || aiBusy === 'new-jx-memo'} onClick={() => generateJxMemo('loveletter')}>情书</button>
+                </div>
               </div>
             </>
           ) : (
@@ -365,6 +546,78 @@ export default function VirtualSpace() {
         );
       })()}
 
+      {showTab === 'memory' && (
+        <div className="vs-content">
+          <div className="vs-date-title">
+            <Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            记忆库
+          </div>
+          {!memUnlocked ? (
+            <div className="password-gate">
+              <div className="password-gate-icon">🔒</div>
+              <div className="password-gate-title">记忆库需要密码</div>
+              <div className="password-gate-hint">
+                输入密码进入（默认可能是 0921 或 0709）<br />
+                试错 3 次江浔会帮你打开
+              </div>
+              <input
+                type="password"
+                value={memPwdInput}
+                onChange={e => setMemPwdInput(e.target.value)}
+                className="password-input"
+                onKeyDown={e => { if (e.key === 'Enter') tryMemPwd(); }}
+                placeholder="密码"
+              />
+              <div className="password-attempts">
+                {memPwdAttempts > 0 && <span>已试错 {memPwdAttempts}/3 次</span>}
+              </div>
+              <button className="btn-primary" onClick={tryMemPwd}>进入</button>
+            </div>
+          ) : (
+            <div className="vs-memory-list">
+              {state.memories.length === 0 ? (
+                <div className="empty-state" style={{ padding: '24px 0' }}>
+                  <p>还没有记忆条目<br /><span style={{ fontSize: 12 }}>去微信里聊天并"记为重要记忆"</span></p>
+                </div>
+              ) : (
+                state.memories.map(m => (
+                  <div key={m.id} className="vs-memory-item">
+                    <div className="vs-memory-cat">
+                      {m.starred && <Star size={12} color="#e65100" fill="#e65100" />}
+                      [{m.category}]
+                    </div>
+                    <div className="vs-memory-content">{m.content}</div>
+                    <div className="vs-memory-date">
+                      {new Date(m.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {periodMenuFor && (
+        <div className="replay-modal-backdrop" onClick={() => setPeriodMenuFor(null)}>
+          <div className="period-menu" onClick={e => e.stopPropagation()}>
+            <div className="period-menu-title">{periodMenuFor} 经期标记</div>
+            <button className="period-menu-item" onClick={() => periodStartOn(periodMenuFor)}>
+              🌸 标记为开始
+            </button>
+            <button className="period-menu-item" onClick={() => periodEndOn(periodMenuFor)}>
+              ✅ 标记为结束
+            </button>
+            <button className="period-menu-item" onClick={() => periodUndoOn(periodMenuFor)}>
+              ↩️ 撤销这天的标记
+            </button>
+            <button className="period-menu-cancel" onClick={() => setPeriodMenuFor(null)}>
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
       {showTab === 'period' && (
         <div className="vs-content">
           <div className="vs-date-title">经期记录</div>
@@ -395,7 +648,7 @@ export default function VirtualSpace() {
           )}
 
           <div className="period-hint" style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 8 }}>
-            💡 在"经期记录"模式下，直接点日历就能标记开始 / 结束。
+            💡 在"经期记录"模式下，点日历任意日期会弹出"开始/结束/撤销"菜单。
           </div>
 
           <div className="period-list">

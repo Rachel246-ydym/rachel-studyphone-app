@@ -303,3 +303,181 @@
   line-height: 1.5;
   word-break: break-word;
 }
+
+/* ============ Batch 11 additions ============ */
+
+.vs-memo-kind {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.vs-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.vs-jx-imprint {
+  font-size: 12px;
+  color: var(--primary-dark);
+  background: var(--primary-lightest);
+  padding: 4px 10px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vs-jx-memo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary.tiny {
+  font-size: 11px;
+  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spinning {
+  animation: vs-spin 1s linear infinite;
+}
+
+@keyframes vs-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Memory tab */
+.vs-memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vs-memory-item {
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.vs-memory-cat {
+  font-size: 11px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.vs-memory-content {
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.vs-memory-date {
+  font-size: 10px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* Password gate (shared with chat) */
+.password-gate {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.password-gate-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.password-gate-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 4px;
+}
+
+.password-gate-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.password-input {
+  display: block;
+  margin: 0 auto 6px;
+  width: 160px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  text-align: center;
+}
+
+.password-attempts {
+  font-size: 11px;
+  color: #e03131;
+  margin-bottom: 8px;
+  min-height: 14px;
+}
+
+/* Period click menu */
+.period-menu {
+  position: relative;
+  background: var(--bg-white);
+  border-radius: var(--radius);
+  padding: 18px;
+  min-width: 240px;
+  max-width: 80%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.period-menu-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.period-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.period-menu-item:hover {
+  background: var(--primary-lightest);
+}
+
+.period-menu-cancel {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 12px;
+  cursor: pointer;
+}
