@@ -37,7 +37,8 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
   }, [messages]);
 
   // Clear this contact's unread badge as soon as the user opens the chat,
-  // so the sidebar red dot reflects reality.
+  // so the sidebar red dot reflects reality. Also clear sessionUnlocked on
+  // unmount so password-protected groups re-prompt next time.
   useEffect(() => {
     if (contact && contact.unread && contact.unread > 0) {
       dispatch({
@@ -45,33 +46,54 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
         payload: { id: contactId, updates: { unread: 0 } },
       });
     }
+    return () => {
+      const c = state.contacts.find(x => x.id === contactId);
+      if (c?.passwordProtected && c.sessionUnlocked) {
+        dispatch({
+          type: 'UPDATE_CONTACT',
+          payload: { id: contactId, updates: { sessionUnlocked: false } },
+        });
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId]);
 
   if (!contact) return null;
   const currentContact = contact; // narrowed non-null alias for closures
 
-  // If the group is password-protected and the user hasn't unlocked yet,
-  // show a password gate. After three wrong guesses it auto-unlocks
-  // (江浔 "自动解除限制让我登录去看群聊信息") — we flip passwordProtected
-  // permanently off once that happens so the user can walk back in later.
-  if (currentContact.passwordProtected && !passwordPassed) {
-    const correct = currentContact.password || '0921';
+  // Password gate for JX private groups. Accepts either the contact's own
+  // password, 0921 (江浔 birthday), or 0709 (京京 birthday). After three
+  // wrong guesses 江浔 silently "lets her in" — but only for this session:
+  // we flip sessionUnlocked on the contact and keep passwordProtected true,
+  // so leaving and reopening re-prompts. A sessionUnlocked contact skips the
+  // gate for as long as the flag survives (until clearSession or reload).
+  const effectiveUnlocked =
+    passwordPassed || currentContact.sessionUnlocked === true;
+  if (currentContact.passwordProtected && !effectiveUnlocked) {
+    // Allow custom password + both defaults
+    const validPasswords = [
+      currentContact.password,
+      '0921',
+      '0709',
+    ].filter(Boolean) as string[];
     const tryPwd = () => {
-      if (passwordInput === correct) {
+      if (validPasswords.includes(passwordInput)) {
         setPasswordPassed(true);
+        dispatch({
+          type: 'UPDATE_CONTACT',
+          payload: { id: currentContact.id, updates: { sessionUnlocked: true } },
+        });
         return;
       }
       const next = passwordAttempts + 1;
       setPasswordAttempts(next);
       setPasswordInput('');
       if (next >= 3) {
-        // Auto-unlock: strip protection so it never locks again
+        // Session-only auto-unlock — NOT permanent
         dispatch({
           type: 'UPDATE_CONTACT',
-          payload: { id: currentContact.id, updates: { passwordProtected: false } },
+          payload: { id: currentContact.id, updates: { sessionUnlocked: true } },
         });
-        // System message inside the thread for narrative context
         dispatch({
           type: 'ADD_MESSAGE',
           payload: {
@@ -79,7 +101,7 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
             contactId: currentContact.id,
             senderId: 'system',
             senderName: '系统',
-            content: '江浔叹了口气：算了算了，你看吧……',
+            content: '江浔叹了口气：算了算了，这次让你看一眼……（离开后还得再输密码）',
             type: 'system',
             timestamp: Date.now(),
           },
@@ -98,7 +120,10 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
         <div className="password-gate">
           <div className="password-gate-icon">🔒</div>
           <div className="password-gate-title">这是江浔的私人群聊</div>
-          <div className="password-gate-hint">输入密码进入（试错 3 次江浔会自动放你进来）</div>
+          <div className="password-gate-hint">
+            输入密码进入（默认可能是 0921 或 0709）<br />
+            试错 3 次江浔会"登录"放你进来（仅本次有效，退出后需重新输入）
+          </div>
           <input
             type="password"
             value={passwordInput}

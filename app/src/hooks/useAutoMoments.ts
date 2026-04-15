@@ -139,6 +139,7 @@ export function useAutoMoments() {
 
       // ===== 2. Custom character proactive chats =====
       for (const char of s.characters) {
+        if (char.autoEnabled === false) continue; // respect per-char auto toggle
         const key = CHAR_LAST_MSG_PREFIX + char.id;
         const last = readTs(key);
         const charGap = 2 * 60 * 60 * 1000 + Math.floor(Math.random() * 4 * 60 * 60 * 1000);
@@ -224,6 +225,7 @@ export function useAutoMoments() {
         }
         // Each custom character may react too
         for (const char of s.characters) {
+          if (char.autoEnabled === false) continue;
           const rkey = CHAR_LAST_REACT_PREFIX + char.id + '-' + mm.id;
           if (readTs(rkey)) continue;
           if (Math.random() < 0.25) {

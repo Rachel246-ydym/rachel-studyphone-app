@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../store/AppContext';
-import { ArrowLeft, Plus, Trash2, MessageCircle, Users, Camera } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, MessageCircle, Users, Camera, Zap, ZapOff } from 'lucide-react';
 import type { CharacterCard, ChatContact } from '../../types';
 
 interface Props {
@@ -83,6 +83,7 @@ export default function CharacterManager({ onBack }: Props) {
       avatar,
       personality: personality.trim(),
       createdAt: Date.now(),
+      autoEnabled: true,
     };
     dispatch({ type: 'ADD_CHARACTER', payload: card });
 
@@ -104,6 +105,12 @@ export default function CharacterManager({ onBack }: Props) {
     setPersonality('');
     setAvatar('');
     setShowAdd(false);
+  }
+
+  function toggleAuto(char: CharacterCard) {
+    const next: CharacterCard = { ...char, autoEnabled: !(char.autoEnabled ?? true) };
+    dispatch({ type: 'REMOVE_CHARACTER', payload: char.id });
+    dispatch({ type: 'ADD_CHARACTER', payload: next });
   }
 
   function removeCharacter(charId: string) {
@@ -283,6 +290,14 @@ export default function CharacterManager({ onBack }: Props) {
                 <div className="character-personality">{char.personality}</div>
               </div>
               <div className="character-actions">
+                <button
+                  className="header-btn"
+                  onClick={() => toggleAuto(char)}
+                  title={(char.autoEnabled ?? true) ? '自动互动已开启（点击关闭省 API）' : '自动互动已关闭（点击开启）'}
+                  style={{ color: (char.autoEnabled ?? true) ? 'var(--primary)' : 'var(--text-light)' }}
+                >
+                  {(char.autoEnabled ?? true) ? <Zap size={16} /> : <ZapOff size={16} />}
+                </button>
                 <button className="header-btn" title="聊天">
                   <MessageCircle size={16} />
                 </button>
