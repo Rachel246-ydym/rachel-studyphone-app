@@ -1,0 +1,207 @@
+.library-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.book-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.book-card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--primary-lighter);
+}
+
+.book-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.book-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-title {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+.book-meta {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+.book-progress-row {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.progress-fill.jiangxun {
+  background: var(--accent);
+}
+
+/* Reading view */
+.library-reading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.reading-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.reading-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reading-header .header-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+.reading-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.reading-text {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-h);
+}
+
+.selection-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-white);
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.reading-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--bg-white);
+  border-top: 1px solid var(--border);
+}
+
+.page-info {
+  font-size: 13px;
+  color: var(--text-light);
+  min-width: 80px;
+  text-align: center;
+}
+
+/* Marks panel */
+.marks-panel {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mark-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.mark-text {
+  font-size: 13px;
+  color: var(--primary-dark);
+  background: var(--primary-lightest);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.mark-comment {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.mark-reply {
+  font-size: 13px;
+  color: var(--text);
+  padding-left: 12px;
+  border-left: 2px solid var(--border-light);
+  margin: 4px 0;
+}
+
+.mark-reply-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 12px;
+  font-family: var(--sans);
+  outline: none;
+  margin-top: 6px;
+}
+
+.mark-reply-input:focus {
+  border-color: var(--primary);
+}
