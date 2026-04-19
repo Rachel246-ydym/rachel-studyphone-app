@@ -241,12 +241,16 @@ export function buildJiangxunImprintPrompt(noteContent: string): string {
 }
 
 // 从 AI 回复里提取可能的地点关键词 → 用于驱动地图事件
+// All location strings here must match a LANDMARK id in Map.tsx.
 export const LOCATION_KEYWORDS: { keyword: string; location: string }[] = [
   { keyword: '食堂', location: '食堂' },
   { keyword: '吃饭', location: '食堂' },
   { keyword: '吃午饭', location: '食堂' },
   { keyword: '吃晚饭', location: '食堂' },
   { keyword: '吃早饭', location: '食堂' },
+  { keyword: '早餐', location: '食堂' },
+  { keyword: '午餐', location: '食堂' },
+  { keyword: '晚餐', location: '食堂' },
   { keyword: '教学楼', location: '教学楼' },
   { keyword: '上课', location: '教学楼' },
   { keyword: '教室', location: '教学楼' },
@@ -257,15 +261,17 @@ export const LOCATION_KEYWORDS: { keyword: string; location: string }[] = [
   { keyword: '实验室', location: '研究室' },
   { keyword: '广场', location: '中心广场' },
   { keyword: '健身房', location: '健身房' },
+  { keyword: '锻炼', location: '健身房' },
   { keyword: '跑步', location: '操场' },
   { keyword: '操场', location: '操场' },
-  { keyword: '打球', location: '篮球场' },
-  { keyword: '篮球', location: '篮球场' },
+  { keyword: '运动', location: '操场' },
+  { keyword: '打球', location: '操场' },
+  { keyword: '篮球', location: '操场' },
   { keyword: '咖啡', location: '咖啡馆' },
-  { keyword: '奶茶', location: '奶茶店' },
+  { keyword: '奶茶', location: '咖啡馆' },
   { keyword: '超市', location: '超市' },
   { keyword: '买东西', location: '超市' },
-  { keyword: '便利店', location: '便利店' },
+  { keyword: '便利店', location: '超市' },
   { keyword: '宿舍', location: '江浔的公寓' },
   { keyword: '公寓', location: '江浔的公寓' },
   { keyword: '回宿舍', location: '江浔的公寓' },

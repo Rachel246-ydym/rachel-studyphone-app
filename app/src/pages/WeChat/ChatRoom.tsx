@@ -195,24 +195,27 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
   }
 
   function splitAndAddAIReply(aiReply: string) {
+    let msgTimestamp = Date.now();
     const parts = aiReply.split(/(\*[^*]+\*)/g);
     for (const part of parts) {
       if (part.startsWith('*') && part.endsWith('*')) {
-        addMessage({
+        const m = addMessage({
           contactId,
           senderId: contactId === 'jiangxun' ? 'jiangxun' : contact!.characterId || contactId,
           senderName: contact!.name,
           content: part.slice(1, -1),
           type: 'action',
         });
+        msgTimestamp = m.timestamp;
       } else if (part.trim()) {
-        addMessage({
+        const m = addMessage({
           contactId,
           senderId: contactId === 'jiangxun' ? 'jiangxun' : contact!.characterId || contactId,
           senderName: contact!.name,
           content: part.trim(),
           type: 'text',
         });
+        msgTimestamp = m.timestamp;
       }
     }
     // Chat-map consistency: if 江浔 mentioned a known place, auto-log an
@@ -220,7 +223,7 @@ export default function ChatRoom({ contactId, onBack, onOpenStoryReplay }: Props
     if (contactId === 'jiangxun') {
       const newLocation = extractLocationFromText(aiReply);
       if (newLocation) {
-        const now = Date.now();
+        const now = msgTimestamp;
         const todayStr = new Date(now).toISOString().slice(0, 10);
         // Find latest arrive event from today
         const todaysArrivals = state.mapEvents

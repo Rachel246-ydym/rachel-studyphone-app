@@ -15,13 +15,15 @@ interface Landmark {
 }
 
 const LANDMARKS: Landmark[] = [
-  { id: '食堂',      name: '食堂',      icon: '🍱', row: 0, col: 0 },
-  { id: '教学楼',    name: '教学楼',    icon: '🏛️', row: 0, col: 2 },
-  { id: '图书馆',    name: '图书馆',    icon: '📚', row: 0, col: 4 },
-  { id: '研究室',    name: '研究室',    icon: '🔬', row: 1, col: 1 },
-  { id: '广场',      name: '中心广场',  icon: '⛲', row: 1, col: 3 },
-  { id: '健身房',    name: '健身房',    icon: '🏋️', row: 2, col: 0 },
-  { id: '咖啡馆',    name: '咖啡馆',    icon: '☕', row: 2, col: 2 },
+  { id: '食堂',      name: '食堂',       icon: '🍱', row: 0, col: 0 },
+  { id: '超市',      name: '超市',       icon: '🏪', row: 0, col: 1 },
+  { id: '教学楼',    name: '教学楼',     icon: '🏛️', row: 0, col: 2 },
+  { id: '图书馆',    name: '图书馆',     icon: '📚', row: 0, col: 4 },
+  { id: '研究室',    name: '研究室',     icon: '🔬', row: 1, col: 1 },
+  { id: '广场',      name: '中心广场',   icon: '⛲', row: 1, col: 3 },
+  { id: '健身房',    name: '健身房',     icon: '🏋️', row: 2, col: 0 },
+  { id: '操场',      name: '操场',       icon: '🏃', row: 2, col: 1 },
+  { id: '咖啡馆',    name: '咖啡馆',     icon: '☕', row: 2, col: 2 },
   { id: '公寓',      name: '江浔的公寓', icon: '🏠', row: 2, col: 4 },
 ];
 
@@ -30,12 +32,14 @@ function matchLandmark(text: string): string | null {
   for (const lm of LANDMARKS) {
     if (text.includes(lm.id)) return lm.id;
   }
-  // Fallbacks
-  if (text.includes('食堂') || text.includes('饭')) return '食堂';
+  // Fallbacks for common phrases not captured by LANDMARK ids
+  if (text.includes('食堂') || text.includes('饭') || text.includes('餐')) return '食堂';
   if (text.includes('教室') || text.includes('上课')) return '教学楼';
   if (text.includes('图书')) return '图书馆';
-  if (text.includes('咖啡')) return '咖啡馆';
-  if (text.includes('健身') || text.includes('跑步')) return '健身房';
+  if (text.includes('咖啡') || text.includes('奶茶')) return '咖啡馆';
+  if (text.includes('篮球') || text.includes('打球') || text.includes('跑步') || text.includes('运动')) return '操场';
+  if (text.includes('健身') || text.includes('锻炼')) return '健身房';
+  if (text.includes('便利') || text.includes('买东西')) return '超市';
   if (text.includes('家') || text.includes('宿舍') || text.includes('回去')) return '公寓';
   return null;
 }
