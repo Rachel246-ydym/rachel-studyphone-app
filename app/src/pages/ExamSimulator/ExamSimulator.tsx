@@ -245,13 +245,19 @@ export default function ExamSimulator() {
       </div>
 
       <div className="exam-content">
-        {tab === 'today' && <TodayTab tasks={todayTasks} onComplete={completeTask} />}
+        {tab === 'today' && (
+          <TodayTab
+            allTasks={state.studyTasks}
+            today={today}
+            onComplete={completeTask}
+            onMakeupSingle={makeupSingle}
+          />
+        )}
         {tab === 'progress' && (
           <ProgressTab
             tasks={state.studyTasks}
             stats={state.studyStats}
             today={today}
-            onMakeupSingle={makeupSingle}
             onComplete={completeTask}
           />
         )}

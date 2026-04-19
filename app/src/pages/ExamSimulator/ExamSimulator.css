@@ -304,6 +304,12 @@
   opacity: 0.5;
 }
 
+.calendar-day.selected {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  font-weight: 700;
+}
+
 /* ============ Batch 1 additions ============ */
 
 .today-progress-card {
