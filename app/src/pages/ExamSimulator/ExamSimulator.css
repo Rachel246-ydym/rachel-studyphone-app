@@ -526,3 +526,123 @@
   border-radius: var(--radius-sm);
   margin-bottom: 8px;
 }
+
+/* ── Overall hero progress card ── */
+.overall-hero {
+  background: linear-gradient(135deg, #e8f5ee, #fff);
+}
+
+.overall-pct-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.overall-pct-num {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.overall-pct-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+.overall-bar-wrap {
+  height: 12px;
+  background: var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.overall-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-light), var(--primary));
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.overall-weights {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-light);
+  justify-content: flex-end;
+}
+
+/* ── Attribute rows ── */
+.attr-row {
+  margin: 10px 0;
+}
+
+.attr-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.attr-label {
+  font-size: 12px;
+  color: var(--text);
+  min-width: 60px;
+}
+
+.attr-value {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.attr-max {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-light);
+}
+
+.attr-hint {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-left: auto;
+}
+
+.attr-bar {
+  height: 7px;
+  background: var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.attr-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  opacity: 0.85;
+}
+
+/* ── Achievement enhancements ── */
+.ach-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin: 4px 0 6px;
+  letter-spacing: 0.5px;
+}
+
+.achievement-unlock-date {
+  font-size: 11px;
+  color: var(--primary);
+  margin-top: 3px;
+}
+
+.ach-got {
+  font-size: 11px;
+  color: var(--primary);
+  text-align: right;
+  line-height: 1.5;
+}
