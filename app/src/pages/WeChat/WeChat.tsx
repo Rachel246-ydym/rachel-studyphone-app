@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../store/AppContext';
 import ChatList from './ChatList';
 import ChatRoom from './ChatRoom';
@@ -20,6 +20,14 @@ export default function WeChat() {
     setActiveContactId(contactId);
     setView('chat');
   }
+
+  // Auto-open a contact when navigated here from the Map module
+  useEffect(() => {
+    if (state.pendingOpenContactId) {
+      openChat(state.pendingOpenContactId);
+      dispatch({ type: 'SET_STATE', payload: { pendingOpenContactId: undefined } });
+    }
+  }, [state.pendingOpenContactId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function goBack() {
     if (view === 'chat') {

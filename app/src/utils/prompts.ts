@@ -1,5 +1,5 @@
 // Default products for the shop
-import type { Product } from '../types';
+import type { Product, MapLandmark } from '../types';
 
 export const DEFAULT_PRODUCTS: Product[] = [
   // Food / Ingredients
@@ -185,3 +185,189 @@ export const SUBJECT_LABELS: Record<string, string> = {
   professional: '📚 专业课',
   politics: '🗓️ 政治',
 };
+
+// ============ Map Module — 双人定位数据 ============
+
+// 京京的位置（根据当前小时自动切换）
+export const JINGJING_LOCATIONS: Record<string, { x: number; y: number; label: string }> = {
+  sleep:     { x: 200, y: 130, label: '宿舍' },
+  breakfast: { x: 390, y: 285, label: '食堂' },
+  class:     { x: 520, y: 425, label: '教学楼' },
+  lunch:     { x: 390, y: 285, label: '食堂' },
+  nap:       { x: 200, y: 130, label: '宿舍' },
+  study:     { x: 345, y: 595, label: '图书馆' },
+  dinner:    { x: 390, y: 285, label: '食堂' },
+  evening:   { x: 345, y: 595, label: '图书馆' },
+  back:      { x: 200, y: 130, label: '宿舍' },
+};
+
+// 江浔可能出现的地点坐标映射
+export const JIANGXUN_LOCATION_COORDS: Record<string, { x: number; y: number }> = {
+  '宿舍':   { x: 645, y: 135 },
+  '公寓':   { x: 645, y: 135 },
+  '食堂':   { x: 400, y: 290 },
+  '图书馆': { x: 345, y: 595 },
+  '教学楼': { x: 520, y: 425 },
+  '操场':   { x: 640, y: 520 },
+  '篮球场': { x: 650, y: 500 },
+  '超市':   { x: 285, y: 395 },
+  '咖啡馆': { x: 200, y: 510 },
+  '实验室': { x: 550, y: 560 },
+  '校门口': { x: 400, y: 840 },
+  '湖边':   { x: 155, y: 340 },
+  '林荫道': { x: 295, y: 248 },
+};
+
+// 虚拟地标数据
+export const MAP_LANDMARKS: MapLandmark[] = [
+  {
+    id: 'lm-01',
+    name: '鹿鸣咖啡',
+    category: 'cafe',
+    position: { x: 200, y: 500 },
+    rating: 4.6,
+    description: '藏在梧桐树后面的独立咖啡馆，拿铁拉花是小鹿',
+    hours: '08:00 - 22:00',
+    tags: ['安静', '有Wi-Fi', '适合自习'],
+    emoji: '☕',
+    reviews: [
+      { author: '考研人A', content: '自习圣地，老板不赶人，续杯半价', date: '2天前', rating: 5 },
+      { author: '摄影系学姐', content: '窗边的光很适合拍照，下午三点最好', date: '1周前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-02',
+    name: '白鸟书房',
+    category: 'bookstore',
+    position: { x: 280, y: 420 },
+    rating: 4.8,
+    description: '二手书+新书混搭的独立书店，有只橘猫常驻',
+    hours: '10:00 - 21:30',
+    tags: ['有猫', '二手书', '文艺'],
+    emoji: '📚',
+    reviews: [
+      { author: '中文系小刘', content: '淘到一本绝版的汪曾祺，老板只收了我十块钱', date: '5天前', rating: 5 },
+      { author: '路人甲', content: '橘猫叫年糕，很亲人，会趴在你腿上', date: '3天前', rating: 5 },
+    ],
+  },
+  {
+    id: 'lm-03',
+    name: '烟雨面馆',
+    category: 'restaurant',
+    position: { x: 420, y: 350 },
+    rating: 4.3,
+    description: '校门口的老面馆，红烧牛肉面是招牌',
+    hours: '06:30 - 21:00',
+    tags: ['实惠', '量大', '老字号'],
+    emoji: '🍜',
+    reviews: [
+      { author: '测绘系老王', content: '牛肉面大碗只要15块，肉给得很实在', date: '1天前', rating: 4 },
+      { author: '隔壁大学的', content: '专门坐两站公交来吃，汤底是真的熬的', date: '4天前', rating: 5 },
+    ],
+  },
+  {
+    id: 'lm-04',
+    name: '梧桐湖畔',
+    category: 'park',
+    position: { x: 180, y: 350 },
+    rating: 4.5,
+    description: '校园里最安静的角落，湖边有长椅和垂柳',
+    hours: '全天开放',
+    tags: ['散步', '拍照', '发呆'],
+    emoji: '🌿',
+    reviews: [
+      { author: '园林系学生', content: '春天湖边的紫藤花开了超美', date: '2周前', rating: 5 },
+      { author: '晨跑爱好者', content: '早上六点来跑步，薄雾笼罩的湖面像仙境', date: '1周前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-05',
+    name: '旧时光钟楼',
+    category: 'historical',
+    position: { x: 500, y: 250 },
+    rating: 4.1,
+    description: '校园里最老的建筑，据说日据时期就有了，已停用',
+    hours: '外观全天可看，内部不开放',
+    tags: ['历史', '拍照', '探险'],
+    emoji: '🏛️',
+    reviews: [
+      { author: '摄影师W', content: '傍晚六点的光线打在上面像老电影', date: '2个月前', rating: 4 },
+      { author: '城市漫步者', content: '绕到后面有一面爬满藤蔓的墙，被时间遗忘的感觉', date: '1个月前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-06',
+    name: '木叶花店',
+    category: 'shop',
+    position: { x: 330, y: 480 },
+    rating: 4.7,
+    description: '校园旁的鲜花工作室，可以学插花',
+    hours: '09:00 - 20:00',
+    tags: ['鲜花', '手作', '礼物'],
+    emoji: '🌸',
+    reviews: [
+      { author: '送礼物的人', content: '老板娘帮我配了一束，收到的人很喜欢，价格也合理', date: '1周前', rating: 5 },
+      { author: '路人甲', content: '进去被香味留住了，买了束尤加利，店很小但很温馨', date: '1个月前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-07',
+    name: '第三教学楼',
+    category: 'campus',
+    position: { x: 500, y: 450 },
+    rating: 3.8,
+    description: '测绘工程学院主教学楼，三楼有自习室',
+    hours: '06:00 - 22:30',
+    tags: ['自习', '上课', '测绘'],
+    emoji: '🏫',
+    reviews: [
+      { author: '大三学姐', content: '三楼自习室三点后才有位，不知道为何要等到那么晚', date: '3天前', rating: 3 },
+      { author: '测绘系同学', content: '五楼实验室的设备还不错', date: '2周前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-08',
+    name: '薄暮书吧',
+    category: 'cafe',
+    position: { x: 150, y: 600 },
+    rating: 4.4,
+    description: '白天是书吧晚上变酒吧的奇妙小店',
+    hours: '11:00 - 00:00',
+    tags: ['安静（白天）', '微醺（晚上）', '有驻唱'],
+    emoji: '🌙',
+    reviews: [
+      { author: '夜猫子', content: '周五晚上有驻唱，唱得挺好的，氛围感拉满', date: '5天前', rating: 5 },
+      { author: '白天来的', content: '白天很安静，适合看书，点一杯柠檬水可以坐一下午', date: '1周前', rating: 4 },
+    ],
+  },
+  {
+    id: 'lm-09',
+    name: '南林超市',
+    category: 'shop',
+    position: { x: 300, y: 400 },
+    rating: 3.5,
+    description: '校内唯一的综合超市，什么都有但什么都贵一点',
+    hours: '07:00 - 23:00',
+    tags: ['日用品', '零食', '方便'],
+    emoji: '🏪',
+    reviews: [
+      { author: '住宿生', content: '半夜想吃泡面只能来这，认了', date: '2天前', rating: 3 },
+      { author: '精打细算', content: '同样的东西比外面贵1-2块，但是懒得出校门', date: '1周前', rating: 3 },
+    ],
+  },
+  {
+    id: 'lm-10',
+    name: '霜降居酒屋',
+    category: 'restaurant',
+    position: { x: 450, y: 700 },
+    rating: 4.2,
+    description: '校门外的日式居酒屋，串烧和梅酒很不错',
+    hours: '17:00 - 01:00',
+    tags: ['日料', '串烧', '约会'],
+    emoji: '🏮',
+    reviews: [
+      { author: '美食爱好者', content: '烤鸡翅不踩雷，梅酒很甜，适合放松的夜晚', date: '3天前', rating: 4 },
+      { author: '约会选手', content: '灯光暗暗的很有氛围，适合周末来', date: '1周前', rating: 5 },
+    ],
+  },
+];

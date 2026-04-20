@@ -1,4 +1,4 @@
-import type { AIModel, CharacterCard, MemoryEntry } from '../types';
+import type { AIModel, CharacterCard, MemoryEntry, MapLandmark } from '../types';
 
 interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant';
@@ -285,6 +285,27 @@ export function extractLocationFromText(text: string): string | null {
     if (text.includes(keyword)) return location;
   }
   return null;
+}
+
+const LANDMARK_CATEGORY_LABELS: Record<string, string> = {
+  cafe: '咖啡馆',
+  restaurant: '餐厅',
+  bookstore: '书店',
+  park: '公园',
+  historical: '历史建筑',
+  shop: '商店',
+  campus: '校园设施',
+};
+
+export function buildLandmarkReactionPrompt(landmark: MapLandmark): string {
+  const ratingComment =
+    landmark.rating >= 4.5 ? '评价很高的地方'
+    : landmark.rating >= 3.5 ? '评价还不错的地方'
+    : '评价一般的地方';
+  const categoryLabel = LANDMARK_CATEGORY_LABELS[landmark.category] ?? '场所';
+  return `京京邀请你一起去"${landmark.name}"（${categoryLabel}），${ratingComment}。
+简介：${landmark.description}
+请用20-40字回复，表达你对这个地方的看法和是否愿意一起去。如果评价高，积极一些；如果评价一般，可以犹豫或调侃。保持江浔的性格特征。`;
 }
 
 export { getCrossAccountDetectionPrompt, getCharacterPrompt, JIANGXUN_SYSTEM_PROMPT };

@@ -193,6 +193,24 @@ export interface MapEvent {
   linkedShoppingId?: string; // link to shopping receipt
 }
 
+export interface MapLandmark {
+  id: string;
+  name: string;
+  category: 'cafe' | 'restaurant' | 'bookstore' | 'park' | 'historical' | 'shop' | 'campus';
+  position: { x: number; y: number };
+  rating: number;
+  description: string;
+  hours: string;
+  tags: string[];
+  reviews: Array<{
+    author: string;
+    content: string;
+    date: string;
+    rating: number;
+  }>;
+  emoji: string;
+}
+
 // ============ Shopping ============
 export type ProductCategory =
   | 'food'
@@ -342,4 +360,5 @@ export interface AppState {
   // UI State
   activePage: string;
   sidebarExpanded: boolean;
+  pendingOpenContactId?: string;
 }
