@@ -316,6 +316,9 @@ export interface AppState {
   virtualSpaceEntries: VirtualSpaceEntry[];
   footprints: Footprint[];
   periodRecords: PeriodRecord[];
+  jiangxunMemo?: string;
+  userMemo?: string;
+  userMemoImprint?: string;
 
   // Library
   books: Book[];
