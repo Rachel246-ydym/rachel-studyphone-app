@@ -52,9 +52,19 @@ export default function ProgressTab({ tasks, stats, today, onComplete }: Progres
   const proAbility   = totalPro  > 0 ? Math.round(donePro   / totalPro   * 100) : 0;
   const polAbility   = totalPol  > 0 ? Math.round(donePol   / totalPol   * 100) : 0;
 
-  const pendingReviews = tasks
+  // Overdue reviews (already past, not completed)
+  const overdueReviews = tasks
     .filter(t => t.isReview && !t.isCompleted && t.date < today)
     .slice(0, 5);
+
+  // Upcoming reviews in the next 14 days
+  const in14Days = new Date();
+  in14Days.setDate(in14Days.getDate() + 14);
+  const in14DaysStr = `${in14Days.getFullYear()}-${String(in14Days.getMonth() + 1).padStart(2, '0')}-${String(in14Days.getDate()).padStart(2, '0')}`;
+  const upcomingReviews = tasks
+    .filter(t => t.isReview && !t.isCompleted && t.date >= today && t.date <= in14DaysStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
 
   return (
     <div className="progress-tab">
@@ -116,14 +126,32 @@ export default function ProgressTab({ tasks, stats, today, onComplete }: Progres
         <div className="chip">🗓️ 累计 {stats.totalDaysCheckedIn} 天</div>
       </div>
 
-      {/* ── 待复习 ── */}
-      {pendingReviews.length > 0 && (
+      {/* ── 逾期待复习 ── */}
+      {overdueReviews.length > 0 && (
         <div className="review-panel">
-          <div className="section-title">⏰ 待复习（已过期）</div>
-          {pendingReviews.map(r => (
+          <div className="section-title">⏰ 逾期复习</div>
+          {overdueReviews.map(r => (
             <div key={r.id} className="review-row">
               <span style={{ flex: 1 }}>{r.date} · {r.title}</span>
               <button className="btn-primary small" onClick={() => onComplete(r.id)}>完成</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 近14天复习日程 ── */}
+      {upcomingReviews.length > 0 && (
+        <div className="review-panel">
+          <div className="section-title">📅 近14天复习安排</div>
+          {upcomingReviews.map(r => (
+            <div key={r.id} className="review-row">
+              <span style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600, marginRight: 6 }}>{r.date.slice(5)}</span>
+                {r.title}
+              </span>
+              {r.date === today && (
+                <button className="btn-primary small" onClick={() => onComplete(r.id)}>打卡</button>
+              )}
             </div>
           ))}
         </div>

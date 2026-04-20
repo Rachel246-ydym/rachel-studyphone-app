@@ -5,7 +5,7 @@ import type { ChatMessage } from '../../types';
 import TodayTab from './TodayTab';
 import ProgressTab from './ProgressTab';
 import AchievementsTab from './AchievementsTab';
-import { buildDailyTasks, PLAN_START, PLAN_START_STR, toDateStr } from './utils';
+import { buildDailyTasks, buildReviewTitle, PLAN_START, PLAN_START_STR, toDateStr } from './utils';
 import './ExamSimulator.css';
 
 type TabKey = 'today' | 'progress' | 'achievements';
@@ -16,7 +16,7 @@ export default function ExamSimulator() {
 
   const today = toDateStr(new Date());
 
-  // Generate today's tasks + backfill past 13 days + Ebbinghaus reviews
+  // Generate today's tasks + backfill past 13 days (reviews are scheduled on task completion)
   useEffect(() => {
     if (today < PLAN_START_STR) return;
 
@@ -36,39 +36,37 @@ export default function ExamSimulator() {
         buildDailyTasks(ds).forEach(t => dispatch({ type: 'ADD_STUDY_TASK', payload: t }));
       }
     }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Ebbinghaus reviews: 1/2/4/7/15/30 days after completion
+  // Schedule all 6 Ebbinghaus review tasks immediately after a task is completed.
+  // Called from completeTask/makeupSingle so reviews are always created at the right future dates.
+  function scheduleReviews(task: import('../../types').StudyTask) {
     const intervals = [1, 2, 4, 7, 15, 30];
-    const completedTasks = state.studyTasks.filter(
-      t => t.isCompleted && !t.isReview && !t.makeup && t.completedAt,
-    );
-    completedTasks.forEach(task => {
-      intervals.forEach(interval => {
-        const reviewDate = new Date(task.completedAt!);
-        reviewDate.setDate(reviewDate.getDate() + interval);
-        const reviewDateStr = toDateStr(reviewDate);
-        if (reviewDateStr !== today) return;
-        const exists = state.studyTasks.some(
-          t => t.isReview && t.reviewOf === task.id && t.date === reviewDateStr,
-        );
-        if (exists) return;
-        dispatch({
-          type: 'ADD_STUDY_TASK',
-          payload: {
-            id: `review-${Date.now()}-${task.id}-${interval}`,
-            date: reviewDateStr,
-            subject: task.subject,
-            title: `复习：${task.title}`,
-            description: `第${interval}天复习 · ${task.description}`,
-            isCompleted: false,
-            isReview: true,
-            reviewOf: task.id,
-            haibiReward: 3,
-          },
-        });
+    const baseDate = new Date(task.completedAt ?? Date.now());
+    intervals.forEach(interval => {
+      const reviewDate = new Date(baseDate);
+      reviewDate.setDate(reviewDate.getDate() + interval);
+      const reviewDateStr = toDateStr(reviewDate);
+      const exists = state.studyTasks.some(
+        t => t.isReview && t.reviewOf === task.id && t.date === reviewDateStr,
+      );
+      if (exists) return;
+      dispatch({
+        type: 'ADD_STUDY_TASK',
+        payload: {
+          id: `review-${Date.now()}-${task.id}-${interval}`,
+          date: reviewDateStr,
+          subject: task.subject,
+          title: buildReviewTitle(task),
+          description: `第${interval}天复习节点`,
+          isCompleted: false,
+          isReview: true,
+          reviewOf: task.id,
+          haibiReward: 3,
+        },
       });
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   function notifyUnlock(title: string) {
     const now = Date.now();
@@ -162,8 +160,14 @@ export default function ExamSimulator() {
     const task = state.studyTasks.find(t => t.id === taskId);
     if (!task || task.isCompleted) return;
 
+    const completedAt = Date.now();
     dispatch({ type: 'COMPLETE_TASK', payload: taskId });
     dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: task.haibiReward } });
+
+    // Schedule Ebbinghaus reviews for non-review tasks
+    if (!task.isReview) {
+      scheduleReviews({ ...task, isCompleted: true, completedAt });
+    }
 
     // Update stats only if it's a "today" completion and all today tasks are done.
     if (task.date === today) {
@@ -190,8 +194,13 @@ export default function ExamSimulator() {
   function makeupSingle(taskId: string) {
     const task = state.studyTasks.find(t => t.id === taskId);
     if (!task || task.isCompleted) return;
+    const completedAt = Date.now();
     dispatch({ type: 'COMPLETE_TASK', payload: taskId });
     dispatch({ type: 'ADD_HAIBI', payload: { target: 'user', amount: Math.floor(task.haibiReward / 2) } });
+    // Schedule reviews for makeup completions too (non-review tasks only)
+    if (!task.isReview) {
+      scheduleReviews({ ...task, isCompleted: true, completedAt });
+    }
     // First-time makeup achievement
     const ach = state.achievements.find(a => a.condition === 'first_makeup' && !a.isUnlocked);
     if (ach) {

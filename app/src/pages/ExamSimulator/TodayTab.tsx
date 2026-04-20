@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SUBJECT_LABELS, CALENDAR_MILESTONES } from '../../utils/prompts';
 import type { StudyTask } from '../../types';
-import { toDateStr } from './utils';
+import { toDateStr, buildDailyTasks } from './utils';
 
 interface TodayTabProps {
   allTasks: StudyTask[];
@@ -38,16 +38,29 @@ export default function TodayTab({ allTasks, today, onComplete, onMakeupSingle }
     return CALENDAR_MILESTONES.find(m => m.date === dateStr);
   }
 
-  const selectedTasks = allTasks.filter(t => t.date === viewDate);
-  const normal = selectedTasks.filter(t => !t.isReview);
-  const reviews = selectedTasks.filter(t => t.isReview);
-  const done = selectedTasks.filter(t => t.isCompleted).length;
-  const reward = selectedTasks.filter(t => t.isCompleted).reduce((s, t) => s + t.haibiReward, 0);
-
   const isToday = viewDate === today;
   const isFuture = viewDate > today;
   const isPast = viewDate < today;
   const ms = getMilestone(viewDate);
+
+  // For future dates: generate preview tasks locally (not stored), plus show scheduled reviews
+  const futurePreviews = useMemo(
+    () => (isFuture ? buildDailyTasks(viewDate) : []),
+    [viewDate, isFuture],
+  );
+
+  const storedTasksForDate = allTasks.filter(t => t.date === viewDate);
+  // For future: show scheduled reviews (stored) + preview normal tasks (local)
+  const selectedTasks = isFuture
+    ? [...storedTasksForDate, ...futurePreviews]
+    : storedTasksForDate;
+
+  const normal = isFuture
+    ? futurePreviews
+    : selectedTasks.filter(t => !t.isReview);
+  const reviews = selectedTasks.filter(t => t.isReview);
+  const done = storedTasksForDate.filter(t => t.isCompleted).length;
+  const reward = storedTasksForDate.filter(t => t.isCompleted).reduce((s, t) => s + t.haibiReward, 0);
 
   return (
     <div className="task-list">
@@ -124,12 +137,19 @@ export default function TodayTab({ allTasks, today, onComplete, onMakeupSingle }
             )}
           </span>
           <span style={{ color: '#e65100' }}>
-            {done}/{selectedTasks.length} 完成 · +{reward} 🪙
+            {isFuture
+              ? `${normal.length + reviews.length} 项预定`
+              : `${done}/${selectedTasks.length} 完成 · +${reward} 🪙`}
           </span>
         </div>
-        {selectedTasks.length === 0 && (
+        {isFuture && (
+          <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 4 }}>
+            预览模式 · 届时自动生成，按实际日期为准
+          </div>
+        )}
+        {!isFuture && selectedTasks.length === 0 && (
           <div style={{ fontSize: 12, color: 'var(--text-light)', marginTop: 6 }}>
-            {isFuture ? '该日任务尚未生成（届时自动创建）' : '这天没有任务记录'}
+            这天没有任务记录
           </div>
         )}
         {isPast && selectedTasks.some(t => !t.isCompleted) && (
@@ -160,7 +180,7 @@ export default function TodayTab({ allTasks, today, onComplete, onMakeupSingle }
       {normal.length > 0 && (
         <>
           <div className="section-title">
-            {isToday ? '📌 今日任务' : isFuture ? '📋 预定任务' : '📋 历史任务'}
+            {isToday ? '📌 今日任务' : isFuture ? '📋 预定任务（预览）' : '📋 历史任务'}
           </div>
           {normal.map(task => (
             <TaskRow

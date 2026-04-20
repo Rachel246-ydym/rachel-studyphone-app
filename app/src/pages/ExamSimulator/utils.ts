@@ -71,7 +71,7 @@ export function englishTasksFor(dateStr: string): EnglishSlot[] {
     },
     {
       subtype: 'reading',
-      title: `📖 ${tag}阅读`,
+      title: beforeCet6 ? `📖 英语阅读两篇` : `📖 英语阅读一篇`,
       desc: beforeCet6 ? '六级阅读 2 篇限时练习' : '考研英语阅读 1 篇精读',
       reward: 4,
     },
@@ -161,6 +161,23 @@ export function buildDailyTasks(dateStr: string): StudyTask[] {
   }
 
   return tasks;
+}
+
+// 生成复习任务标题，格式：复习 · 4/20 数学第1讲
+export function buildReviewTitle(task: StudyTask): string {
+  const d = new Date(task.date + 'T00:00:00');
+  const dateTag = `${d.getMonth() + 1}/${d.getDate()}`;
+  const subjectMap: Record<string, string> = {
+    math: '数学',
+    english: '英语',
+    professional: '专业课',
+    politics: '政治',
+  };
+  const sub = subjectMap[task.subject] ?? task.subject;
+  // 从标题里提取讲次/小标题
+  const lectureMatch = task.title.match(/第\d+讲/);
+  const shortTitle = lectureMatch ? `${lectureMatch[0]}` : task.title.slice(0, 12);
+  return `🔁 复习 · ${dateTag} ${sub}${shortTitle}`;
 }
 
 export function daysFromPlanStart(today: string): number {
