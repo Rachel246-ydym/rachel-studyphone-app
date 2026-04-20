@@ -28,9 +28,11 @@ export default function TodayTab({ allTasks, today, onComplete, onMakeupSingle }
     const dateStr = getDateStr(day);
     if (dateStr > today) return 'none';
     const dayTasks = allTasks.filter(t => t.date === dateStr && !t.isReview);
+    // Guard: empty array → never "complete" (JS [].every() is vacuously true)
     if (dayTasks.length === 0) return 'none';
-    if (dayTasks.every(t => t.isCompleted)) return 'complete';
-    if (dayTasks.some(t => t.isCompleted)) return 'partial';
+    const completedCount = dayTasks.filter(t => t.isCompleted).length;
+    if (completedCount === dayTasks.length) return 'complete';
+    if (completedCount > 0) return 'partial';
     return 'pending';
   }
 
@@ -103,7 +105,7 @@ export default function TodayTab({ allTasks, today, onComplete, onMakeupSingle }
                 key={day}
                 className={[
                   'calendar-day',
-                  status,
+                  status !== 'none' ? status : '',  // don't add 'none' as class
                   isCurrentDay ? 'today' : '',
                   isFutureDay ? 'future' : '',
                   milestone ? 'milestone' : '',

@@ -167,6 +167,35 @@
   border: 1px solid var(--border-light);
 }
 
+/* Override VirtualSpace.css global .calendar-day rules so they don't bleed in */
+.exam-calendar .calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.exam-calendar .calendar-day {
+  text-align: center;
+  padding: 6px 2px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  color: var(--text);
+  background: transparent;
+}
+
+.exam-calendar .calendar-day.today {
+  font-weight: 700;
+  color: var(--text);
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.exam-calendar .calendar-day:hover:not(.empty) {
+  background: var(--bg);
+}
+
 .calendar-days .calendar-day.complete {
   background: var(--primary-lightest);
   color: var(--primary-dark);
@@ -300,14 +329,17 @@
 }
 .detail-task:last-child { border-bottom: none; }
 
-.calendar-day.future {
+/* Use .exam-calendar scope to beat VirtualSpace.css specificity */
+.exam-calendar .calendar-day.future {
   opacity: 0.5;
 }
 
-.calendar-day.selected {
+.exam-calendar .calendar-day.selected {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
   font-weight: 700;
+  background: transparent;
+  color: var(--text);
 }
 
 /* ============ Batch 1 additions ============ */

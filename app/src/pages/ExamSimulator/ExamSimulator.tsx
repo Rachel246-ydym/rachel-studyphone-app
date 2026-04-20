@@ -25,16 +25,15 @@ export default function ExamSimulator() {
       buildDailyTasks(today).forEach(t => dispatch({ type: 'ADD_STUDY_TASK', payload: t }));
     }
 
-    // Backfill past 13 days as makeup-available
-    for (let i = 1; i <= 13; i++) {
+    // Backfill ALL days from PLAN_START to yesterday so April 1+ are always populated
+    const planDaysBack = Math.floor((Date.now() - PLAN_START.getTime()) / 86400000);
+    for (let i = 1; i <= planDaysBack; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      if (d < PLAN_START) continue;
+      if (d < PLAN_START) break;
       const ds = toDateStr(d);
-      const existing = state.studyTasks.filter(t => t.date === ds);
-      if (existing.length === 0) {
-        buildDailyTasks(ds).forEach(t => dispatch({ type: 'ADD_STUDY_TASK', payload: t }));
-      }
+      if (state.studyTasks.some(t => t.date === ds)) continue;
+      buildDailyTasks(ds).forEach(t => dispatch({ type: 'ADD_STUDY_TASK', payload: t }));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
