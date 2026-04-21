@@ -1,0 +1,21 @@
+{
+  "name": "手机模拟器",
+  "short_name": "手机模拟器",
+  "description": "个人学习生活助手",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7FAF8",
+  "theme_color": "#4CAF7D",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
